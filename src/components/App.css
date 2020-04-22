@@ -27,3 +27,7 @@
 .footer {
   text-align: right;
 }
+
+.dragover {
+  background-color: greenyellow;
+}

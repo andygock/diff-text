@@ -3,10 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@blueprintjs/core": "^3.26.0",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
     "react": "^16.13.1",
+    "react-diff-viewer": "^3.0.2",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.1"
   },
@@ -36,5 +38,6 @@
     "eslint-config-prettier": "^6.11.0",
     "eslint-config-react-app": "^5.2.1",
     "prettier": "^2.0.5"
-  }
+  },
+  "homepage": "./"
 }

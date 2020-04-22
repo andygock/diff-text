@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { TextArea } from '@blueprintjs/core';
 import ReactDiffViewer from 'react-diff-viewer';
+import TextInput from './TextInput';
 import './App.css';
 
 // ref:
 // https://github.com/praneshr/react-diff-viewer
 
+const initialLeft = 'Paste text here\n\n123\n456\n789\n000';
+const initialRight = 'Paste text here\n\n123\n456diff\n789\nExtra line';
+
 const App = () => {
-  const [inputLeft, setInputLeft] = useState(
-    'Paste text here\n\n123\n456\n789\n000'
-  );
-  const [inputRight, setInputRight] = useState(
-    'Paste text here\n\n123\n456diff\n789\nExtra line'
-  );
+  const [inputLeft, setInputLeft] = useState('');
+  const [inputRight, setInputRight] = useState('');
 
   useEffect(() => {
     // nothing needed at the moment
@@ -28,18 +28,8 @@ const App = () => {
         </a>
       </p>
       <div className="grid">
-        <TextArea
-          className="bp3-code-block input"
-          fill
-          onChange={(e) => setInputLeft(e.target.value)}
-          value={inputLeft}
-        />
-        <TextArea
-          className="bp3-code-block input"
-          fill
-          onChange={(e) => setInputRight(e.target.value)}
-          value={inputRight}
-        />
+        <TextInput onUpdate={setInputLeft} initialValue={initialLeft} />
+        <TextInput onUpdate={setInputRight} initialValue={initialRight} />
       </div>
       <div className="output bp3-monospace-text">
         <ReactDiffViewer

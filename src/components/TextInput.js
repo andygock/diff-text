@@ -1,21 +1,14 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { TextArea } from '@blueprintjs/core';
 import PropTypes from 'prop-types';
 
-const TextInput = ({ onUpdate, initialValue }) => {
-  const [value, setValue] = useState(initialValue);
-
-  useEffect(() => {
-    onUpdate(value);
-  }, [onUpdate, value]);
-
+const TextInput = ({ onUpdate, value }) => {
   return (
     <TextArea
       className="bp3-code-block input"
       fill
       onChange={(e) => {
-        setValue(e.target.value);
+        onUpdate(e.target.value);
       }}
       value={value}
     />
@@ -24,11 +17,9 @@ const TextInput = ({ onUpdate, initialValue }) => {
 
 TextInput.propTypes = {
   onUpdate: PropTypes.func.isRequired,
-  initialValue: PropTypes.string,
+  value: PropTypes.string.isRequired,
 };
 
-TextInput.defaultProps = {
-  initialValue: '',
-};
+TextInput.defaultProps = {};
 
 export default TextInput;

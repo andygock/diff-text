@@ -12,8 +12,8 @@ const initialLeft = 'Paste text here\n\n123\n456\n789\n000';
 const initialRight = 'Paste text here\n\n123\n456diff\n789\nExtra line';
 
 const App = () => {
-  const [inputLeft, setInputLeft] = useState('');
-  const [inputRight, setInputRight] = useState('');
+  const [inputLeft, setInputLeft] = useState(initialLeft);
+  const [inputRight, setInputRight] = useState(initialRight);
 
   useEffect(() => {
     // nothing needed at the moment
@@ -28,8 +28,8 @@ const App = () => {
         </a>
       </p>
       <div className="grid">
-        <TextInput onUpdate={setInputLeft} initialValue={initialLeft} />
-        <TextInput onUpdate={setInputRight} initialValue={initialRight} />
+        <TextInput onUpdate={setInputLeft} value={inputLeft} />
+        <TextInput onUpdate={setInputRight} value={inputRight} />
       </div>
       <div className="output bp3-monospace-text">
         <ReactDiffViewer

@@ -4,8 +4,11 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import { isText, isBinary } from 'istextorbinary';
 
-// max file to reader 100 MB - large files may cause crash or lock up
-const maxFileSize = 100000000;
+// max file to reader 10 MB - large files may cause ReactDiffViewer to crash
+const maxFileSize = 10000000;
+
+// when reading lots of lines, it often causes ReactDiffViewer to crash
+const maxLines = 10000;
 
 // check whether file is a spreadsheet file
 const isSpreadsheetFile = (file) => {
@@ -16,7 +19,6 @@ const isSpreadsheetFile = (file) => {
     'xlsx',
     'xlsb',
     'xlsm',
-    'csv',
     'dif',
     'sylk',
     'slk',
@@ -41,10 +43,11 @@ const isSpreadsheetFile = (file) => {
 
 // code splitted function to read a spreadsheet file using SheetJS
 // https://github.com/sheetjs/sheetjs
-const readSpreadsheetFile = async (data) => {
+const readFileSpreadsheet = async (data) => {
   try {
     // dynamic load the library and read XLSX ArrayBuffer
     const XLSX = await import('xlsx');
+
     const wb = XLSX.read(data, { type: 'array' });
 
     // currently only supports reading of the first worksheet
@@ -68,7 +71,7 @@ const readFile = (file, callback, options) => {
   // spreadsheet binary mode
   if (options?.xlsx) {
     reader.onloadend = async () => {
-      const text = await readSpreadsheetFile(reader.result);
+      const text = await readFileSpreadsheet(reader.result);
       callback(text);
     };
     reader.readAsArrayBuffer(file);
@@ -77,6 +80,11 @@ const readFile = (file, callback, options) => {
 
   // normal text mode
   reader.onloadend = () => {
+    const lines = reader.result.split('\n').length;
+    if (lines > maxLines) {
+      window.alert(`Error: Exceeded maximum ${maxLines} text lines`);
+      return;
+    }
     callback(reader.result);
   };
   reader.readAsText(file);

@@ -2,16 +2,32 @@
 @import '~@blueprintjs/core/lib/css/blueprint.css';
 /* @import '~@blueprintjs/icons/lib/css/blueprint-icons.css'; */
 
+/* blueprint sets an outline we don't want */
+* {
+  outline: none !important;
+}
+
+textarea {
+  margin-top: 0.2rem !important;
+}
+
 .app {
   font-size: 1.4rem;
   margin: 1rem;
 }
 
-.grid {
+.grid-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-column-gap: 1rem;
-  margin-bottom: 1rem;
+  /* margin-bottom: 1rem; */
+}
+
+.grid-header {
+  display: grid;
+  grid-template-columns: 1fr 50px 1fr;
+  grid-column-gap: 1rem;
+  /* margin-bottom: 1rem; */
 }
 
 .input {
@@ -31,4 +47,8 @@
 
 .dragover {
   background-color: greenyellow;
+}
+
+.center {
+  text-align: center;
 }

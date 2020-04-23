@@ -9,10 +9,32 @@ import Footer from './Footer';
 // ref:
 //   https://github.com/praneshr/react-diff-viewer
 
-const initialLeft =
-  'Paste text here\nOr drop a file with text content here\n\n123\n456\n789\n000';
-const initialRight =
-  'Paste text here\nOr drop a file with text content here\n\n123\n456diff\n789\nExtra line';
+const initialLeft = `Paste text here, or drop a text or spreadsheet file here
+Each line is compared for differences with results shown below
+
+Lines are compared character by character
+
+Replaced lines are detected
+
+And so are deleted lines
+
+Common lines are not marked 1
+Common lines are not marked 2
+Common lines are not marked 3
+`;
+
+const initialRight = `Paste text here, or drop a text or spreadsheet file here
+Each line is compared for differences with results shown below
+
+Lines are compared characTER by character
+
+Lines replaced are detected
+
+Common lines are not marked 1
+Common lines are not marked 2
+Common lines are not marked 3
+
+Additional lines are marked green`;
 
 const maxPermittedLineLength = 1000;
 

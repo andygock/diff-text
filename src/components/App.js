@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import ReactDiffViewer from 'react-diff-viewer';
 import TextInput from './TextInput';
 import './App.css';
+import Footer from './Footer';
 
 // ref:
 //   https://github.com/praneshr/react-diff-viewer
@@ -54,10 +55,7 @@ const App = () => {
           </p>
         )}
       </div>
-      <div className="footer bp3-text-small">
-        &copy; <a href="https://gock.net/">Andy Gock</a> | MIT License |{' '}
-        <a href="https://github.com/andygock/diff-text">GitHub</a>
-      </div>
+      <Footer />
     </div>
   );
 };

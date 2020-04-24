@@ -154,28 +154,30 @@ const TextInput = ({ onUpdate, value }) => {
   };
 
   return (
-    <TextArea
-      className={classNames('bp3-code-block', 'input', {
-        dragover: dragCounter,
-      })}
-      fill
-      onChange={(e) => {
-        onUpdate(e.target.value);
-      }}
-      value={value}
-      onDrop={onDropHandler}
-      onDragEnter={(e) => {
-        e.preventDefault();
-        dragCounterIncrement();
-      }}
-      onDragLeave={(e) => {
-        e.preventDefault();
-        dragCounterDecrement();
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-      }}
-    />
+    <div>
+      <TextArea
+        className={classNames('bp3-code-block', 'input', {
+          dragover: dragCounter,
+        })}
+        fill
+        onChange={(e) => {
+          onUpdate(e.target.value);
+        }}
+        value={value}
+        onDrop={onDropHandler}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          dragCounterIncrement();
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          dragCounterDecrement();
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+        }}
+      />
+    </div>
   );
 };
 

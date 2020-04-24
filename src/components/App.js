@@ -4,6 +4,7 @@ import './App.css';
 import Diff from './Diff';
 import Footer from './Footer';
 import TextInput from './TextInput';
+import DiffViewerOptions from './DiffViewerOptions';
 
 // ref:
 //   https://github.com/praneshr/react-diff-viewer
@@ -38,6 +39,10 @@ Additional lines are marked green`;
 const App = () => {
   const [inputLeft, setInputLeft] = React.useState(initialLeft);
   const [inputRight, setInputRight] = React.useState(initialRight);
+  const [options, setOptions] = React.useState({
+    splitView: false,
+    compareMethod: 'diffChars',
+  });
 
   return (
     <div className="app">
@@ -66,7 +71,12 @@ const App = () => {
             &harr;
           </Button>
         </div>
-        <div>&nbsp;</div>
+        <div>
+          <DiffViewerOptions
+            options={options}
+            onChange={(options) => setOptions(options)}
+          />
+        </div>
       </div>
 
       <div className="grid-inputs">
@@ -74,7 +84,7 @@ const App = () => {
         <TextInput onUpdate={setInputRight} value={inputRight} />
       </div>
       <div className="output bp3-monospace-text">
-        <Diff left={inputLeft} right={inputRight} />
+        <Diff left={inputLeft} right={inputRight} options={options} />
       </div>
       <Footer />
     </div>

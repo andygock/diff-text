@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-props-no-spreading */
 import mem from 'mem';
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -13,7 +14,7 @@ const getMaxLineLength = (str) => {
   return Math.max(...str.split('\n').map((s) => s.length));
 };
 
-const Diff = ({ left, right }) => {
+const Diff = ({ left, right, options }) => {
   // calculate md5 hash
   const hash = {
     left: md5(left),
@@ -40,7 +41,14 @@ const Diff = ({ left, right }) => {
     return <p className="identical">Content is identical</p>;
   }
 
-  return <ReactDiffViewer oldValue={left} newValue={right} splitView={false} />;
+  return (
+    <ReactDiffViewer
+      oldValue={left}
+      newValue={right}
+      splitView={false}
+      {...options}
+    />
+  );
 };
 
 Diff.propTypes = {

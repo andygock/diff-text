@@ -59,3 +59,7 @@ textarea {
   padding: 1rem;
   font-weight: bold;
 }
+
+.options {
+  text-align: right;
+}

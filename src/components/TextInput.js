@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
 import { TextArea } from '@blueprintjs/core';
-import PropTypes from 'prop-types';
 import classNames from 'classnames';
-import { isText, isBinary } from 'istextorbinary';
+import { isBinary } from 'istextorbinary';
+import PropTypes from 'prop-types';
+import React from 'react';
+import { showError } from '../library/toaster';
 
 // max file to reader 10 MB - large files may cause ReactDiffViewer to crash
 const maxFileSize = 10000000;
@@ -82,7 +83,7 @@ const readFile = (file, callback, options) => {
   reader.onloadend = () => {
     const lines = reader.result.split('\n').length;
     if (lines > maxLines) {
-      window.alert(`Error: Exceeded maximum ${maxLines} text lines`);
+      showError(`Error: Exceeded maximum ${maxLines} text lines`);
       return;
     }
     callback(reader.result);
@@ -100,9 +101,9 @@ const TextInput = ({ onUpdate, value }) => {
   const onLoadHandler = (data) => {
     // check content of file to see if it seems to be a binary file
     if (isBinary(null, data)) {
-      const msg = `Error: Dropped file's contents appears not to be a text or spreadsheet file`;
-      console.error(msg);
-      window.alert(msg);
+      showError(
+        `Error: Dropped file's contents appears not to be a text or spreadsheet file`
+      );
       return;
     }
 
@@ -120,7 +121,7 @@ const TextInput = ({ onUpdate, value }) => {
     // check if user dropped more than one file
     if (files.length > 1) {
       // user dropped more than one file
-      window.alert("Error: Don't drop more than one file.");
+      showError(`Error: Don't drop more than one file.`);
       return;
     }
 
@@ -128,7 +129,7 @@ const TextInput = ({ onUpdate, value }) => {
 
     // extremely large files may cause a crash
     if (file.size > maxFileSize) {
-      window.alert(`Error: Exceeded max file size of ${maxFileSize} bytes`);
+      showError(`Error: Exceeded max file size of ${maxFileSize} bytes`);
       return;
     }
 
@@ -142,8 +143,8 @@ const TextInput = ({ onUpdate, value }) => {
     // check filename, whether it may be a binary file
     // if all good, we'll check for the content later again
     if (isBinary(file.name)) {
-      window.alert(
-        'Error: Dropped file appears to be not a text file (by file extension)'
+      showError(
+        `Error: Dropped file appears to be not a text file (by file extension)`
       );
       return;
     }

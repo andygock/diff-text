@@ -22,3 +22,8 @@ Run:
 Build:
 
     npm run build
+
+## References
+
+- [react-diff-viewer](https://github.com/praneshr/react-diff-viewer)
+- [SheetJS](https://github.com/sheetjs/sheetjs)

@@ -4,8 +4,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import ReactDiffViewer from 'react-diff-viewer';
 import Spark from 'spark-md5';
-
-const maxPermittedLineLength = 1000;
+import config from '../config';
 
 // memoized MD5 calculation
 const md5 = mem((s) => Spark.hash(s));
@@ -27,11 +26,11 @@ const Diff = ({ left, right, options }) => {
     getMaxLineLength(right)
   );
 
-  if (maxInputLines > maxPermittedLineLength) {
+  if (maxInputLines > config.maxPermittedLineLength) {
     return (
       <p>
         Error: Can not calculate line differences if any line is over{' '}
-        {maxPermittedLineLength} characters long.
+        {config.maxPermittedLineLength} characters long.
       </p>
     );
   }

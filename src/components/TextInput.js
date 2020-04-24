@@ -3,13 +3,8 @@ import classNames from 'classnames';
 import { isBinary } from 'istextorbinary';
 import PropTypes from 'prop-types';
 import React from 'react';
+import config from '../config';
 import { showError } from '../library/toaster';
-
-// max file to reader 10 MB - large files may cause ReactDiffViewer to crash
-const maxFileSize = 10000000;
-
-// when reading lots of lines, it often causes ReactDiffViewer to crash
-const maxLines = 10000;
 
 // check whether file is a spreadsheet file
 const isSpreadsheetFile = (file) => {
@@ -82,8 +77,8 @@ const readFile = (file, callback, options) => {
   // normal text mode
   reader.onloadend = () => {
     const lines = reader.result.split('\n').length;
-    if (lines > maxLines) {
-      showError(`Error: Exceeded maximum ${maxLines} text lines`);
+    if (lines > config.maxLines) {
+      showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
       return;
     }
     callback(reader.result);
@@ -128,8 +123,8 @@ const TextInput = ({ onUpdate, value }) => {
     const file = files[0];
 
     // extremely large files may cause a crash
-    if (file.size > maxFileSize) {
-      showError(`Error: Exceeded max file size of ${maxFileSize} bytes`);
+    if (file.size > config.maxFileSize) {
+      showError(`Error: Exceeded max file size of ${config.maxFileSize} bytes`);
       return;
     }
 

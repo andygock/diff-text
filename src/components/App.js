@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import ReactDiffViewer from 'react-diff-viewer';
 import { Button } from '@blueprintjs/core';
-import TextInput from './TextInput';
+import React from 'react';
 import './App.css';
+import Diff from './Diff';
 import Footer from './Footer';
+import TextInput from './TextInput';
 
 // ref:
 //   https://github.com/praneshr/react-diff-viewer
@@ -36,21 +35,9 @@ Common lines are not marked 3
 
 Additional lines are marked green`;
 
-const maxPermittedLineLength = 1000;
-
-const getMaxLineLength = (str) => {
-  return Math.max(...str.split('\n').map((s) => s.length));
-};
-
 const App = () => {
-  const [inputLeft, setInputLeft] = useState(initialLeft);
-  const [inputRight, setInputRight] = useState(initialRight);
-
-  // check max line length, if longer than 1000 chars - do not render ReactDiffViewer as it may crash
-  const maxInputLines = Math.max(
-    getMaxLineLength(inputLeft),
-    getMaxLineLength(inputRight)
-  );
+  const [inputLeft, setInputLeft] = React.useState(initialLeft);
+  const [inputRight, setInputRight] = React.useState(initialRight);
 
   return (
     <div className="app">
@@ -87,18 +74,7 @@ const App = () => {
         <TextInput onUpdate={setInputRight} value={inputRight} />
       </div>
       <div className="output bp3-monospace-text">
-        {maxInputLines <= maxPermittedLineLength ? (
-          <ReactDiffViewer
-            oldValue={inputLeft}
-            newValue={inputRight}
-            splitView={false}
-          />
-        ) : (
-          <p>
-            Error: Can not calculate line differences if any line is over{' '}
-            {maxPermittedLineLength} characters long.
-          </p>
-        )}
+        <Diff left={inputLeft} right={inputRight} />
       </div>
       <Footer />
     </div>

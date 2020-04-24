@@ -52,3 +52,10 @@ textarea {
 .center {
   text-align: center;
 }
+
+.identical {
+  background-color: greenyellow;
+  color: black;
+  padding: 1rem;
+  font-weight: bold;
+}

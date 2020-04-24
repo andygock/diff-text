@@ -9,10 +9,12 @@
     "@testing-library/user-event": "^7.2.1",
     "classnames": "^2.2.6",
     "istextorbinary": "^3.3.0",
+    "mem": "^6.1.0",
     "react": "^16.13.1",
     "react-diff-viewer": "^3.0.2",
     "react-dom": "^16.13.1",
     "react-scripts": "3.4.1",
+    "spark-md5": "^3.0.1",
     "xlsx": "^0.15.6"
   },
   "scripts": {

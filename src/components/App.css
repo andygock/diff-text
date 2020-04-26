@@ -63,3 +63,8 @@ textarea {
 .options {
   text-align: right;
 }
+
+.options .bp3-button-group {
+  /* more space when buttong groups wrapped */
+  margin: 2px;
+}

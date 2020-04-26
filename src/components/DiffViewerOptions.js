@@ -1,31 +1,38 @@
-import { Button, ButtonGroup } from '@blueprintjs/core';
+import { Button, ButtonGroup, Tooltip, Position } from '@blueprintjs/core';
+
 import React from 'react';
 
 const DiffViewerOptions = ({ options, onChange }) => {
   const compareButtons = [
     {
       method: 'diffChars',
-      text: 'Chars',
+      text: 'Ch',
+      tooltip: 'Characters',
     },
     {
       method: 'diffWords',
-      text: 'Words',
+      text: 'W',
+      tooltip: 'Words',
     },
     {
       method: 'diffWordsWithSpace',
-      text: 'Words+Space',
+      text: 'W+S',
+      tooltip: 'Words & Space',
     },
     {
       method: 'diffLines',
-      text: 'Lines',
+      text: 'L',
+      tooltip: 'Lines',
     },
     {
       method: 'diffTrimmedLines',
-      text: 'Trimmed Lines',
+      text: 'TL',
+      tooltip: 'Trimmed Lines',
     },
     {
       method: 'diffSentences',
-      text: 'Sentences',
+      text: 'S',
+      tooltip: 'Sentences',
     },
   ];
 
@@ -33,15 +40,21 @@ const DiffViewerOptions = ({ options, onChange }) => {
     <div className="options">
       <ButtonGroup>
         {compareButtons.map((data) => (
-          <Button
+          <Tooltip
             key={data.method}
-            active={options?.compareMethod === data.method}
-            onClick={() => {
-              onChange({ ...options, compareMethod: data.method });
-            }}
+            content={data.tooltip}
+            position={Position.BOTTOM}
           >
-            {data.text}
-          </Button>
+            <Button
+              key={data.method}
+              active={options?.compareMethod === data.method}
+              onClick={() => {
+                onChange({ ...options, compareMethod: data.method });
+              }}
+            >
+              {data.text}
+            </Button>
+          </Tooltip>
         ))}
       </ButtonGroup>
       &nbsp;

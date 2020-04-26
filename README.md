@@ -2,7 +2,7 @@
 
 A web app for comparing two portions of text using [react-diff-viewer](https://github.com/praneshr/react-diff-viewer).
 
-[Demo](https://gock.net/diff-text/)
+[Live demo](https://diff-text.netlify.app/)
 
 ## Features
 

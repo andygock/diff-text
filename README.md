@@ -4,6 +4,8 @@ A web app for comparing two portions of text using [react-diff-viewer](https://g
 
 [Live demo](https://diff-text.netlify.app/)
 
+![Screenshot](https://github.com/andygock/diff-text/blob/master/screenshots/diff-text-screenshot.png?raw=true)
+
 ## Features
 
 - Supports drag and drop of files into the `textarea`.

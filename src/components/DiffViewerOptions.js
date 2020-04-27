@@ -1,6 +1,6 @@
-import { Button, ButtonGroup, Tooltip, Position } from '@blueprintjs/core';
-
+import { Button, ButtonGroup, Position, Tooltip } from '@blueprintjs/core';
 import React from 'react';
+import useWindowSize from '../hooks/useWindowSize';
 
 const DiffViewerOptions = ({ options, onChange }) => {
   const compareButtons = [
@@ -36,6 +36,10 @@ const DiffViewerOptions = ({ options, onChange }) => {
     },
   ];
 
+  // use shorter buttons with tooltips when window width is small to prevent wrapping
+  const size = useWindowSize();
+  const useShortButtons = size.width < 1500;
+
   return (
     <div className="options">
       <ButtonGroup>
@@ -44,6 +48,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
             key={data.method}
             content={data.tooltip}
             position={Position.BOTTOM}
+            disabled={!useShortButtons}
           >
             <Button
               key={data.method}
@@ -52,7 +57,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
                 onChange({ ...options, compareMethod: data.method });
               }}
             >
-              {data.text}
+              {useShortButtons ? data.text : data.tooltip}
             </Button>
           </Tooltip>
         ))}

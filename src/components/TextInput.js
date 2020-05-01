@@ -47,7 +47,7 @@ const readFileSpreadsheet = async (data) => {
     const wb = XLSX.read(data, { type: 'array' });
 
     // currently only supports reading of the first worksheet
-    // it is converted to CSV, the the CSV is diffed
+    // it is converted to CSV, then the CSV is diffed
     const ws = wb.Sheets[wb.SheetNames[0]];
 
     // https://github.com/sheetjs/sheetjs#utility-functions

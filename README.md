@@ -17,15 +17,15 @@ A web app for comparing two portions of text using [react-diff-viewer](https://g
 
 Install dependencies:
 
-    npm install
+    yarn install
 
 Run:
 
-    npm run start
+    yarn start
 
-Build:
+Build production ready static files to `build/`:
 
-    npm run build
+    yarn build
 
 ## References
 

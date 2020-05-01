@@ -64,12 +64,15 @@ const TextInput = ({ onUpdate, value }) => {
             // https://github.com/sheetjs/sheetjs#utility-functions
             const csv = XLSX.utils.sheet_to_csv(ws);
 
-            if (csv.length > config.maxLines) {
-              showError(
-                `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
-              );
-              return;
-            }
+            //
+            // don't check lines, sometimes can be many blank lines at end of spreadsheet
+            //
+            // if (csv.length > config.maxLines) {
+            //   showError(
+            //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
+            //   );
+            //   return;
+            // }
 
             // console.log(csv);
             resolve(csv);

@@ -1,8 +1,8 @@
 import { TextArea } from '@blueprintjs/core';
 import classNames from 'classnames';
-import { isBinary } from 'istextorbinary';
 import PropTypes from 'prop-types';
 import React from 'react';
+import DropTextArea from 'react-dropzone-textarea';
 import config from '../config';
 import { showError } from '../library/toaster';
 
@@ -37,139 +37,97 @@ const isSpreadsheetFile = (file) => {
   ].includes(ext.toLowerCase());
 };
 
-// code splitted function to read a spreadsheet file using SheetJS
-// https://github.com/sheetjs/sheetjs
-const readFileSpreadsheet = async (data) => {
-  try {
-    // dynamic load the library and read XLSX ArrayBuffer
-    const XLSX = await import('xlsx');
-
-    const wb = XLSX.read(data, { type: 'array' });
-
-    // currently only supports reading of the first worksheet
-    // it is converted to CSV, then the CSV is diffed
-    const ws = wb.Sheets[wb.SheetNames[0]];
-
-    // https://github.com/sheetjs/sheetjs#utility-functions
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    return csv;
-  } catch (err) {
-    console.error(err);
-    return err;
-  }
-};
-
-// read File object using FileReader API
-const readFile = (file, callback, options) => {
-  // read the file object
-  const reader = new FileReader();
-
-  // spreadsheet binary mode
-  if (options?.xlsx) {
-    reader.onloadend = async () => {
-      const text = await readFileSpreadsheet(reader.result);
-      callback(text);
-    };
-    reader.readAsArrayBuffer(file);
-    return;
-  }
-
-  // normal text mode
-  reader.onloadend = () => {
-    const lines = reader.result.split('\n').length;
-    if (lines > config.maxLines) {
-      showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
-      return;
-    }
-    callback(reader.result);
-  };
-  reader.readAsText(file);
+// convert ArrayBuffer to string, works in browsers only
+const arrayBufferToString = (arrayBuffer) => {
+  return new TextDecoder('utf-8').decode(arrayBuffer);
 };
 
 const TextInput = ({ onUpdate, value }) => {
-  const [dragCounter, setDragCounter] = React.useState(0);
+  // https://react-dropzone.js.org/
 
-  const dragCounterIncrement = () => setDragCounter((prev) => prev + 1);
-  const dragCounterDecrement = () =>
-    setDragCounter((prev) => Math.max(0, prev - 1));
+  // convert ArrayBuffer to text, compatible with spreadsheet formats
+  const customTextConverter = (arrayBuffer, { file }) => {
+    return new Promise((resolve, reject) => {
+      try {
+        if (isSpreadsheetFile(file)) {
+          //
+          // compatible spreadsheet format
+          //
+          // dynamic load xlsx library and read XLSX ArrayBuffer
+          import('xlsx').then((XLSX) => {
+            // read workbook
+            const wb = XLSX.read(arrayBuffer, { type: 'array' });
 
-  const onLoadHandler = (data) => {
-    // check content of file to see if it seems to be a binary file
-    if (isBinary(null, data)) {
-      showError(
-        `Error: Dropped file's contents appears not to be a text or spreadsheet file`
-      );
-      return;
-    }
+            // only supports reading of the first worksheet, converted to CSV
+            const ws = wb.Sheets[wb.SheetNames[0]];
 
-    // make callback with file contents
-    onUpdate(data);
-  };
+            // https://github.com/sheetjs/sheetjs#utility-functions
+            const csv = XLSX.utils.sheet_to_csv(ws);
 
-  const onDropHandler = (e) => {
-    e.preventDefault();
-    dragCounterDecrement();
+            if (csv.length > config.maxLines) {
+              showError(
+                `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
+              );
+              return;
+            }
 
-    // get file objects, if they exist
-    const files = e.dataTransfer.files;
+            // console.log(csv);
+            resolve(csv);
+          });
+        } else {
+          //
+          // standard text
+          //
+          const string = arrayBufferToString(arrayBuffer);
 
-    // check if user dropped more than one file
-    if (files.length > 1) {
-      // user dropped more than one file
-      showError(`Error: Don't drop more than one file.`);
-      return;
-    }
+          // check number of lines
+          const lines = string.split('\n');
 
-    const file = files[0];
+          if (lines.length > config.maxLines) {
+            showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
+            return;
+          }
 
-    // extremely large files may cause a crash
-    if (file.size > config.maxFileSize) {
-      showError(`Error: Exceeded max file size of ${config.maxFileSize} bytes`);
-      return;
-    }
+          // check length of lines, very long lines can cause ReactDiffViewer to crash
+          const maxLineLength = Math.max(...lines.map((line) => line.length));
+          if (maxLineLength > config.maxPermittedLineLength) {
+            showError(
+              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`
+            );
+            return;
+          }
 
-    if (isSpreadsheetFile(file)) {
-      // special case, we can compare spreadsheet binary files
-      // console.log('Spreadsheet file not supported yet');
-      readFile(file, onLoadHandler, { xlsx: true });
-      return;
-    }
-
-    // check filename, whether it may be a binary file
-    // if all good, we'll check for the content later again
-    if (isBinary(file.name)) {
-      showError(
-        `Error: Dropped file appears to be not a text file (by file extension)`
-      );
-      return;
-    }
-
-    // read the file object
-    readFile(file, onLoadHandler);
+          // console.log(string);
+          resolve(string);
+        }
+      } catch (error) {
+        // Display error in textarea and console
+        console.error(error);
+        resolve(error);
+      }
+    });
   };
 
   return (
     <div>
-      <TextArea
-        className={classNames('bp3-code-block', 'input', {
-          dragover: dragCounter,
-        })}
-        fill
+      <DropTextArea
         onChange={(e) => {
           onUpdate(e.target.value);
         }}
         value={value}
-        onDrop={onDropHandler}
-        onDragEnter={(e) => {
-          e.preventDefault();
-          dragCounterIncrement();
+        component={TextArea}
+        textareaProps={{
+          className: classNames('bp3-code-block', 'input'),
+          fill: true,
         }}
-        onDragLeave={(e) => {
-          e.preventDefault();
-          dragCounterDecrement();
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
+        onDropRead={(text) => onUpdate(text)}
+        onError={(msg) => showError(`Error: ${msg}`)}
+        customTextConverter={customTextConverter}
+        dropzoneProps={{
+          // Ref: https://react-dropzone.js.org/
+
+          // extremely large files may cause a crash
+          maxSize: config.maxFileSize,
         }}
       />
     </div>

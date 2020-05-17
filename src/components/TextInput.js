@@ -1,5 +1,6 @@
 import { TextArea } from '@blueprintjs/core';
 import classNames from 'classnames';
+import { isBinary } from 'istextorbinary';
 import PropTypes from 'prop-types';
 import React from 'react';
 import DropTextArea from 'react-dropzone-textarea';
@@ -81,6 +82,13 @@ const TextInput = ({ onUpdate, value }) => {
           //
           // standard text
           //
+
+          // check if binary
+          if (isBinary(file?.name || null, arrayBuffer)) {
+            showError(`Error: Detected non-spreadsheet binary file`);
+            return;
+          }
+
           const string = arrayBufferToString(arrayBuffer);
 
           // check number of lines

@@ -4,6 +4,7 @@ import { isBinary } from 'istextorbinary';
 import PropTypes from 'prop-types';
 import React from 'react';
 import DropTextArea from 'react-dropzone-textarea';
+import prettyBytes from 'pretty-bytes';
 import config from '../config';
 import { showError } from '../library/toaster';
 
@@ -89,6 +90,14 @@ const TextInput = ({ onUpdate, value }) => {
             return;
           }
 
+          // check max file size
+          // extremely large files may cause a crash
+          if (arrayBuffer.byteLength >= config.maxFileSize) {
+            const prettyMaxSize = prettyBytes(config.maxFileSize);
+            showError(`Error: File is larger than ${prettyMaxSize}`);
+            return;
+          }
+
           const string = arrayBufferToString(arrayBuffer);
 
           // check number of lines
@@ -134,12 +143,13 @@ const TextInput = ({ onUpdate, value }) => {
         onDropRead={(text) => onUpdate(text)}
         onError={(msg) => showError(`Error: ${msg}`)}
         customTextConverter={customTextConverter}
-        dropzoneProps={{
-          // Ref: https://react-dropzone.js.org/
-
-          // extremely large files may cause a crash
-          maxSize: config.maxFileSize,
-        }}
+        dropzoneProps={
+          {
+            // Ref: https://react-dropzone.js.org/
+            // extremely large files may cause a crash
+            // maxSize: config.maxFileSize,
+          }
+        }
       />
     </div>
   );

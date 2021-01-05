@@ -24,3 +24,5 @@ yarn-error.log*
 
 # using yarn, ignore npm lock file
 /package-lock.json
+
+.eslintcache

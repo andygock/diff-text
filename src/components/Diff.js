@@ -9,9 +9,8 @@ import config from '../config';
 // memoized MD5 calculation
 const md5 = mem((s) => Spark.hash(s));
 
-const getMaxLineLength = (str) => {
-  return Math.max(...str.split('\n').map((s) => s.length));
-};
+const getMaxLineLength = (str) =>
+  Math.max(...str.split('\n').map((s) => s.length));
 
 const Diff = ({ left, right, options }) => {
   // calculate md5 hash

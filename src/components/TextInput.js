@@ -40,16 +40,15 @@ const isSpreadsheetFile = (file) => {
 };
 
 // convert ArrayBuffer to string, works in browsers only
-const arrayBufferToString = (arrayBuffer) => {
-  return new TextDecoder('utf-8').decode(arrayBuffer);
-};
+const arrayBufferToString = (arrayBuffer) =>
+  new TextDecoder('utf-8').decode(arrayBuffer);
 
 const TextInput = ({ onUpdate, value }) => {
   // https://react-dropzone.js.org/
 
   // convert ArrayBuffer to text, compatible with spreadsheet formats
-  const customTextConverter = (arrayBuffer, { file }) => {
-    return new Promise((resolve, reject) => {
+  const customTextConverter = (arrayBuffer, { file }) =>
+    new Promise((resolve, reject) => {
       try {
         if (isSpreadsheetFile(file)) {
           //
@@ -126,7 +125,6 @@ const TextInput = ({ onUpdate, value }) => {
         resolve(error);
       }
     });
-  };
 
   return (
     <div>

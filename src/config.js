@@ -1,3 +1,7 @@
+//
+// currently not used
+//
+
 export default {
   // max file to reader 10 MB - large files may cause ReactDiffViewer to crash
   maxFileSize: 10000000,

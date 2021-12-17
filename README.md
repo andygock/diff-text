@@ -23,7 +23,7 @@ Run:
 
     yarn start
 
-Build production ready static files to `build/`:
+Build production ready static files to `dist/`:
 
     yarn build
 

@@ -15,17 +15,25 @@ A web app for comparing two portions of text using [react-diff-viewer](https://g
 
 ## Install and build
 
+Install [pnpm](https://pnpm.io/)
+
+    npm install -g pnpm
+
 Install dependencies:
 
-    yarn install
+    pnpm install
 
 Run:
 
-    yarn start
+    pnpm start
 
 Build production ready static files to `dist/`:
 
-    yarn build
+    pnpm build
+
+If required, use the following Netlify build command
+
+    pnpm build || ( npm install pnpm && pnpm build )
 
 ## References
 

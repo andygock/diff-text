@@ -1,38 +1,38 @@
-import { Button, ButtonGroup, Position, Tooltip } from '@blueprintjs/core';
-import React from 'react';
-import useWindowSize from '../hooks/useWindowSize';
+import { Button, ButtonGroup, Position, Tooltip } from "@blueprintjs/core";
+import React from "react";
+import useWindowSize from "../hooks/useWindowSize";
 
 const DiffViewerOptions = ({ options, onChange }) => {
   const compareButtons = [
     {
-      method: 'diffChars',
-      text: 'Ch',
-      tooltip: 'Characters',
+      method: "diffChars",
+      text: "Ch",
+      tooltip: "Characters",
     },
     {
-      method: 'diffWords',
-      text: 'W',
-      tooltip: 'Words',
+      method: "diffWords",
+      text: "W",
+      tooltip: "Words",
     },
     {
-      method: 'diffWordsWithSpace',
-      text: 'W+S',
-      tooltip: 'Words & Space',
+      method: "diffWordsWithSpace",
+      text: "W+S",
+      tooltip: "Words & Space",
     },
     {
-      method: 'diffLines',
-      text: 'L',
-      tooltip: 'Lines',
+      method: "diffLines",
+      text: "L",
+      tooltip: "Lines",
     },
     {
-      method: 'diffTrimmedLines',
-      text: 'TL',
-      tooltip: 'Trimmed Lines',
+      method: "diffTrimmedLines",
+      text: "TL",
+      tooltip: "Trimmed Lines",
     },
     {
-      method: 'diffSentences',
-      text: 'S',
-      tooltip: 'Sentences',
+      method: "diffSentences",
+      text: "S",
+      tooltip: "Sentences",
     },
   ];
 

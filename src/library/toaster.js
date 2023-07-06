@@ -1,8 +1,8 @@
 /* eslint-disable import/prefer-default-export */
-import { Position, Toaster, Intent } from '@blueprintjs/core';
+import { Position, Toaster, Intent } from "@blueprintjs/core";
 
 const toaster = Toaster.create({
-  className: 'recipe-toaster',
+  className: "recipe-toaster",
   position: Position.TOP,
 });
 

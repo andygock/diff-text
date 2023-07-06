@@ -1,47 +1,47 @@
-import { TextArea } from '@blueprintjs/core';
-import classNames from 'classnames';
-import { isBinary } from 'istextorbinary';
-import PropTypes from 'prop-types';
-import React from 'react';
-import DropTextArea from 'react-dropzone-textarea';
-import prettyBytes from 'pretty-bytes';
-import config from '../config';
-import { showError } from '../library/toaster';
+import { TextArea } from "@blueprintjs/core";
+import classNames from "classnames";
+import { isBinary } from "istextorbinary";
+import PropTypes from "prop-types";
+import React from "react";
+import DropTextArea from "react-dropzone-textarea";
+import prettyBytes from "pretty-bytes";
+import config from "../config";
+import { showError } from "../library/toaster";
 
 // check whether file is a spreadsheet file
 const isSpreadsheetFile = (file) => {
   /* eslint-disable-next-line no-bitwise */
-  const ext = file.name.slice(((file.name.lastIndexOf('.') - 1) >>> 0) + 2);
+  const ext = file.name.slice(((file.name.lastIndexOf(".") - 1) >>> 0) + 2);
   return [
-    'xls',
-    'xlsx',
-    'xlsb',
-    'xlsm',
-    'dif',
-    'sylk',
-    'slk',
-    'prn',
-    'ods',
-    'fods',
-    'dbf',
-    'wks',
-    'wk1',
-    'wk2',
-    'wk3',
-    'wk4',
-    '123',
-    'wq1',
-    'wq2',
-    'wb1',
-    'wb2',
-    'wb3',
-    'qbw',
+    "xls",
+    "xlsx",
+    "xlsb",
+    "xlsm",
+    "dif",
+    "sylk",
+    "slk",
+    "prn",
+    "ods",
+    "fods",
+    "dbf",
+    "wks",
+    "wk1",
+    "wk2",
+    "wk3",
+    "wk4",
+    "123",
+    "wq1",
+    "wq2",
+    "wb1",
+    "wb2",
+    "wb3",
+    "qbw",
   ].includes(ext.toLowerCase());
 };
 
 // convert ArrayBuffer to string, works in browsers only
 const arrayBufferToString = (arrayBuffer) =>
-  new TextDecoder('utf-8').decode(arrayBuffer);
+  new TextDecoder("utf-8").decode(arrayBuffer);
 
 const TextInput = ({ onUpdate, value }) => {
   // https://react-dropzone.js.org/
@@ -55,9 +55,9 @@ const TextInput = ({ onUpdate, value }) => {
           // compatible spreadsheet format
           //
           // dynamic load xlsx library and read XLSX ArrayBuffer
-          import('xlsx').then((XLSX) => {
+          import("xlsx").then((XLSX) => {
             // read workbook
-            const wb = XLSX.read(arrayBuffer, { type: 'array' });
+            const wb = XLSX.read(arrayBuffer, { type: "array" });
 
             // only supports reading of the first worksheet, converted to CSV
             const ws = wb.Sheets[wb.SheetNames[0]];
@@ -100,7 +100,7 @@ const TextInput = ({ onUpdate, value }) => {
           const string = arrayBufferToString(arrayBuffer);
 
           // check number of lines
-          const lines = string.split('\n');
+          const lines = string.split("\n");
 
           if (lines.length > config.maxLines) {
             showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
@@ -111,7 +111,7 @@ const TextInput = ({ onUpdate, value }) => {
           const maxLineLength = Math.max(...lines.map((line) => line.length));
           if (maxLineLength > config.maxPermittedLineLength) {
             showError(
-              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`
+              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
             );
             return;
           }
@@ -135,7 +135,7 @@ const TextInput = ({ onUpdate, value }) => {
         value={value}
         component={TextArea}
         textareaProps={{
-          className: classNames('bp3-code-block', 'input'),
+          className: classNames("bp3-code-block", "input"),
           fill: true,
         }}
         onDropRead={(text) => onUpdate(text)}

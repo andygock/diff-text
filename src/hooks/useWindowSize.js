@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 // based on https://usehooks.com/useWindowSize/
 function useWindowSize() {
-  const isClient = typeof window === 'object';
+  const isClient = typeof window === "object";
 
   function getSize() {
     return {
@@ -22,9 +22,9 @@ function useWindowSize() {
       setWindowSize(getSize());
     }
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => window.removeEventListener("resize", handleResize);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty array ensures that effect is only run on mount and unmount

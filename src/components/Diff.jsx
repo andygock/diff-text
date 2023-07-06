@@ -1,16 +1,16 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import mem from 'mem';
-import PropTypes from 'prop-types';
-import React from 'react';
-import ReactDiffViewer from 'react-diff-viewer';
-import Spark from 'spark-md5';
-import config from '../config';
+import mem from "mem";
+import PropTypes from "prop-types";
+import React from "react";
+import ReactDiffViewer from "react-diff-viewer";
+import Spark from "spark-md5";
+import config from "../config";
 
 // memoized MD5 calculation
 const md5 = mem((s) => Spark.hash(s));
 
 const getMaxLineLength = (str) =>
-  Math.max(...str.split('\n').map((s) => s.length));
+  Math.max(...str.split("\n").map((s) => s.length));
 
 const Diff = ({ left, right, options }) => {
   // calculate md5 hash
@@ -22,13 +22,13 @@ const Diff = ({ left, right, options }) => {
   // check max line length, if longer than 1000 chars - do not render ReactDiffViewer as it may crash
   const maxInputLines = Math.max(
     getMaxLineLength(left),
-    getMaxLineLength(right)
+    getMaxLineLength(right),
   );
 
   if (maxInputLines > config.maxPermittedLineLength) {
     return (
       <p>
-        Error: Can not calculate line differences if any line is over{' '}
+        Error: Can not calculate line differences if any line is over{" "}
         {config.maxPermittedLineLength} characters long.
       </p>
     );

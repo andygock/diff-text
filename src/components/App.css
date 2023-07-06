@@ -86,3 +86,25 @@ textarea {
   /* more space when buttong groups wrapped */
   margin: 2px;
 }
+
+input[type="radio"] {
+  display: none;
+}
+
+label.radio-button {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+
+label:hover {
+  background-color: #f5f5f5;
+}
+
+input[type="radio"]:checked + label.radio-button {
+  background-color: #007acc;
+  border: 1px solid #007acc;
+  color: #fff;
+}

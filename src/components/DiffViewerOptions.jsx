@@ -42,9 +42,10 @@ const DiffViewerOptions = ({ options, onChange }) => {
   return (
     <div className="options">
       <div>
-        {compareButtons.map((data) => (
-          <label key={data.method}>
+        {compareButtons.map((data, index) => (
+          <span key={data.method}>
             <input
+              id={`compareMethod${index}`}
               type="radio"
               name="compareMethod"
               value={data.method}
@@ -53,34 +54,39 @@ const DiffViewerOptions = ({ options, onChange }) => {
                 onChange({ ...options, compareMethod: data.method });
               }}
             />
-            {useShortButtons ? data.text : data.tooltip}
-          </label>
+            <label for={`compareMethod${index}`} className="radio-button">
+              {useShortButtons ? data.text : data.tooltip}
+            </label>
+          </span>
         ))}
       </div>
       &nbsp;
       <div>
-        <label>
-          <input
-            type="radio"
-            name="viewType"
-            value="unified"
-            checked={!options?.splitView}
-            onChange={() => {
-              onChange({ ...options, splitView: false });
-            }}
-          />
+        <input
+          id="viewTypeUnified"
+          type="radio"
+          name="viewType"
+          value="unified"
+          checked={!options?.splitView}
+          onChange={() => {
+            onChange({ ...options, splitView: false });
+          }}
+        />
+        <label for="viewTypeUnified" className="radio-button">
           Unified
         </label>
-        <label>
-          <input
-            type="radio"
-            name="viewType"
-            value="split"
-            checked={options?.splitView}
-            onChange={() => {
-              onChange({ ...options, splitView: true });
-            }}
-          />
+
+        <input
+          id="viewTypeSplit"
+          type="radio"
+          name="viewType"
+          value="split"
+          checked={options?.splitView}
+          onChange={() => {
+            onChange({ ...options, splitView: true });
+          }}
+        />
+        <label for="viewTypeSplit" className="radio-button">
           Split
         </label>
       </div>

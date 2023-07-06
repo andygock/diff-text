@@ -8,7 +8,7 @@ import { showError } from "../library/toaster";
 
 // wrap textarea in forwardRef to allow passing to DropTextArea
 const TextArea = React.forwardRef((props, ref) => (
-  <textarea {...props} ref={ref} />
+  <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
 ));
 
 const isBinary = (arrayBuffer) => {

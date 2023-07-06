@@ -11,7 +11,7 @@ A web app for comparing two portions of text using [react-diff-viewer](https://g
 ## Features
 
 - Supports drag and drop of files into the `textarea` via [react-dropzone-textarea](https://github.com/andygock/react-dropzone-textarea). Disclosure: I'm the author of the library.
-- Supports [multiple spreadsheet formats](https://github.com/sheetjs/sheetjs#file-formats). Currently, it only reads the first worksheet for multi-sheet workbooks.
+- Supports [multiple spreadsheet formats](https://docs.sheetjs.com/docs/#supported-file-formats). Currently, it only reads the first worksheet for multi-sheet workbooks.
 
 ## Install and build
 

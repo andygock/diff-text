@@ -24,7 +24,7 @@ const App = () => {
             react-diff-viewer
           </a>
           . Supports text and{" "}
-          <a href="https://github.com/sheetjs/sheetjs#file-formats">
+          <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
             common spreadsheet files
           </a>
           .

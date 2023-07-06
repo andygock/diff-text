@@ -27,6 +27,8 @@ code {
 
 textarea {
   margin-top: 0.2rem !important;
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
 }
 
 .app {

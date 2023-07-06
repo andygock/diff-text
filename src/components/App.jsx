@@ -18,11 +18,8 @@ const App = () => {
     <div className="app">
       <div className="grid-header">
         <p className="heading">
-          diff-text - A web app for comparing two portions of text using{" "}
-          <a href="https://github.com/praneshr/react-diff-viewer">
-            react-diff-viewer
-          </a>
-          . Supports text and{" "}
+          diff-text - Compare two portions of text in a browser. Supports text
+          and{" "}
           <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
             common spreadsheet files
           </a>

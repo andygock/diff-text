@@ -1,5 +1,10 @@
 @import "../../node_modules/normalize.css/normalize.css";
 
+:root {
+  --main-color: #007acc;
+  --hover-color: #f5f5f5;
+}
+
 html {
   font-size: 62.5%;
 }
@@ -32,6 +37,10 @@ textarea {
 .app {
   font-size: 1.4rem;
   margin: 1rem;
+}
+
+.heading {
+  margin: none;
 }
 
 .grid-inputs {
@@ -68,7 +77,11 @@ textarea {
 }
 
 .center {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  height: 100%;
 }
 
 .identical {
@@ -87,6 +100,8 @@ textarea {
   margin: 2px;
 }
 
+/* radio buttons */
+
 input[type="radio"] {
   display: none;
 }
@@ -94,17 +109,40 @@ input[type="radio"] {
 label.radio-button {
   display: inline-block;
   margin-left: 2px;
-  padding: 5px 10px;
+  padding: 5px 5px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
+input[type="radio"]:checked + label.radio-button {
+  background-color: var(--main-color);
+  border: 1px solid var(--main-color);
+  color: #fff;
+}
+
+/* buttons */
+
+button {
+  background-color: white;
+  display: inline-block;
+  margin-left: 2px;
+  padding: 5px 5px;
   border: 1px solid #ccc;
   cursor: pointer;
 }
 
-label:hover {
-  background-color: #f5f5f5;
+/* hover */
+label.radio-button:hover,
+button:hover {
+  background-color: var(--hover-color);
 }
 
-input[type="radio"]:checked + label.radio-button {
-  background-color: #007acc;
-  border: 1px solid #007acc;
-  color: #fff;
+/* no underline on hovered anchors */
+a,
+a:hover {
+  text-decoration: none;
+  color: var(--main-color);
+}
+
+.compare-method {
+  margin-bottom: 1rem;
 }

@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import mem from "mem";
 import PropTypes from "prop-types";
 import React from "react";
@@ -52,8 +51,11 @@ const Diff = ({ left, right, options }) => {
 Diff.propTypes = {
   left: PropTypes.string.isRequired,
   right: PropTypes.string.isRequired,
+  options: PropTypes.object,
 };
 
-Diff.defaultProps = {};
+Diff.defaultProps = {
+  options: {},
+};
 
 export default Diff;

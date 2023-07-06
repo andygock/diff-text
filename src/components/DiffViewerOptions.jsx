@@ -1,4 +1,5 @@
 import React from "react";
+import PropTypes from "prop-types";
 import useWindowSize from "../hooks/useWindowSize";
 
 const DiffViewerOptions = ({ options, onChange }) => {
@@ -41,7 +42,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
 
   return (
     <div className="options">
-      <div>
+      <div className="compare-method">
         {compareButtons.map((data, index) => (
           <span key={data.method}>
             <input
@@ -54,14 +55,13 @@ const DiffViewerOptions = ({ options, onChange }) => {
                 onChange({ ...options, compareMethod: data.method });
               }}
             />
-            <label for={`compareMethod${index}`} className="radio-button">
+            <label htmlFor={`compareMethod${index}`} className="radio-button">
               {useShortButtons ? data.text : data.tooltip}
             </label>
           </span>
         ))}
       </div>
-      &nbsp;
-      <div>
+      <div className="view-type">
         <input
           id="viewTypeUnified"
           type="radio"
@@ -72,7 +72,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
             onChange({ ...options, splitView: false });
           }}
         />
-        <label for="viewTypeUnified" className="radio-button">
+        <label htmlFor="viewTypeUnified" className="radio-button">
           Unified
         </label>
 
@@ -86,7 +86,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
             onChange({ ...options, splitView: true });
           }}
         />
-        <label for="viewTypeSplit" className="radio-button">
+        <label htmlFor="viewTypeSplit" className="radio-button">
           Split
         </label>
       </div>
@@ -94,8 +94,13 @@ const DiffViewerOptions = ({ options, onChange }) => {
   );
 };
 
-DiffViewerOptions.propTypes = {};
+DiffViewerOptions.propTypes = {
+  options: PropTypes.object,
+  onChange: PropTypes.func.isRequired,
+};
 
-DiffViewerOptions.defaultProps = {};
+DiffViewerOptions.defaultProps = {
+  options: {},
+};
 
 export default DiffViewerOptions;

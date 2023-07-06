@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# development using pnpm, don't track npm lock files
+package-lock.json

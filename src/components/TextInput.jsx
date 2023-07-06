@@ -1,12 +1,32 @@
 import { TextArea } from "@blueprintjs/core";
 import classNames from "classnames";
-import { isBinary } from "istextorbinary";
 import PropTypes from "prop-types";
 import React from "react";
 import DropTextArea from "react-dropzone-textarea";
 import prettyBytes from "pretty-bytes";
 import config from "../config";
 import { showError } from "../library/toaster";
+
+const isBinary = (arrayBuffer) => {
+  const bytes = new Uint8Array(arrayBuffer);
+  const length = bytes.length;
+  let suspiciousBytes = 0;
+
+  // Check if the first 512 bytes contain any null bytes or non-printable ASCII characters
+  for (let i = 0; i < Math.min(length, 512); i++) {
+    const byte = bytes[i];
+    if (byte === 0) {
+      // null byte
+      suspiciousBytes++;
+    } else if (byte < 9 || (byte > 10 && byte < 32) || byte === 127) {
+      // non-printable ASCII character
+      suspiciousBytes++;
+    }
+  }
+
+  // If more than 5% of the first 512 bytes are suspicious, assume it's a binary file
+  return suspiciousBytes / Math.min(length, 512) > 0.05;
+};
 
 // check whether file is a spreadsheet file
 const isSpreadsheetFile = (file) => {
@@ -52,40 +72,48 @@ const TextInput = ({ onUpdate, value }) => {
       try {
         if (isSpreadsheetFile(file)) {
           //
-          // compatible spreadsheet format
+          // compatible spreadsheet format, based on file extension
           //
+
           // dynamic load xlsx library and read XLSX ArrayBuffer
           import("xlsx").then((XLSX) => {
-            // read workbook
-            const wb = XLSX.read(arrayBuffer, { type: "array" });
+            try {
+              // read workbook
+              const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-            // only supports reading of the first worksheet, converted to CSV
-            const ws = wb.Sheets[wb.SheetNames[0]];
+              // only supports reading of the first worksheet, converted to CSV
+              const ws = wb.Sheets[wb.SheetNames[0]];
 
-            // https://github.com/sheetjs/sheetjs#utility-functions
-            const csv = XLSX.utils.sheet_to_csv(ws);
+              // https://github.com/sheetjs/sheetjs#utility-functions
+              const csv = XLSX.utils.sheet_to_csv(ws);
 
-            //
-            // don't check lines, sometimes can be many blank lines at end of spreadsheet
-            //
-            // if (csv.length > config.maxLines) {
-            //   showError(
-            //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
-            //   );
-            //   return;
-            // }
+              //
+              // don't check lines, sometimes can be many blank lines at end of spreadsheet
+              //
+              // if (csv.length > config.maxLines) {
+              //   showError(
+              //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
+              //   );
+              //   return;
+              // }
 
-            // console.log(csv);
-            resolve(csv);
+              // console.log(csv);
+              resolve(csv);
+            } catch (e) {
+              // problem reading spreadsheet
+              showError(`Error: ${e.message}`);
+            }
           });
         } else {
           //
-          // standard text
+          // is standard text, or it could be some other file which is not a spreadsheet
           //
 
-          // check if binary
-          if (isBinary(file?.name || null, arrayBuffer)) {
-            showError(`Error: Detected non-spreadsheet binary file`);
+          // check arrayBuffer if it is a binary file or text file
+          if (isBinary(arrayBuffer)) {
+            showError(
+              `Error: Detected non-spreadsheet binary file (over >5% chars are not text)`,
+            );
             return;
           }
 

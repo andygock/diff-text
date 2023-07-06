@@ -13,7 +13,6 @@
   "dependencies": {
     "@blueprintjs/core": "^5.0.1",
     "classnames": "^2.3.2",
-    "istextorbinary": "^6.0.0",
     "mem": "^9.0.2",
     "normalize.css": "^8.0.1",
     "pretty-bytes": "^6.1.0",

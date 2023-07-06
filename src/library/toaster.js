@@ -1,9 +1,9 @@
 /* eslint-disable import/prefer-default-export */
-import { Position, Toaster, Intent } from "@blueprintjs/core";
+import { Position, Intent, OverlayToaster } from "@blueprintjs/core";
 
-const toaster = Toaster.create({
-  className: "recipe-toaster",
+const toaster = OverlayToaster.create({
   position: Position.TOP,
+  className: "recipe-toaster",
 });
 
 export const showError = (message) => {

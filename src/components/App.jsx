@@ -1,4 +1,3 @@
-import { Button } from "@blueprintjs/core";
 import React from "react";
 import "./App.css";
 import Diff from "./Diff";
@@ -30,8 +29,7 @@ const App = () => {
           .
         </p>
         <div className="center">
-          <Button
-            minimal
+          <button
             onClick={() => {
               // swap left and right contents
               const [left, right] = [inputLeft, inputRight];
@@ -40,7 +38,7 @@ const App = () => {
             }}
           >
             &harr;
-          </Button>
+          </button>
         </div>
         <div>
           <DiffViewerOptions

@@ -1,4 +1,3 @@
-import { Button, ButtonGroup, Position, Tooltip } from "@blueprintjs/core";
 import React from "react";
 import useWindowSize from "../hooks/useWindowSize";
 
@@ -42,45 +41,49 @@ const DiffViewerOptions = ({ options, onChange }) => {
 
   return (
     <div className="options">
-      <ButtonGroup>
+      <div>
         {compareButtons.map((data) => (
-          <Tooltip
-            key={data.method}
-            content={data.tooltip}
-            position={Position.BOTTOM}
-            disabled={!useShortButtons}
-          >
-            <Button
-              key={data.method}
-              active={options?.compareMethod === data.method}
-              onClick={() => {
+          <label key={data.method}>
+            <input
+              type="radio"
+              name="compareMethod"
+              value={data.method}
+              checked={options?.compareMethod === data.method}
+              onChange={() => {
                 onChange({ ...options, compareMethod: data.method });
               }}
-            >
-              {useShortButtons ? data.text : data.tooltip}
-            </Button>
-          </Tooltip>
+            />
+            {useShortButtons ? data.text : data.tooltip}
+          </label>
         ))}
-      </ButtonGroup>
+      </div>
       &nbsp;
-      <ButtonGroup>
-        <Button
-          active={!options?.splitView}
-          onClick={() => {
-            onChange({ ...options, splitView: false });
-          }}
-        >
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="viewType"
+            value="unified"
+            checked={!options?.splitView}
+            onChange={() => {
+              onChange({ ...options, splitView: false });
+            }}
+          />
           Unified
-        </Button>
-        <Button
-          active={options?.splitView}
-          onClick={() => {
-            onChange({ ...options, splitView: true });
-          }}
-        >
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="viewType"
+            value="split"
+            checked={options?.splitView}
+            onChange={() => {
+              onChange({ ...options, splitView: true });
+            }}
+          />
           Split
-        </Button>
-      </ButtonGroup>
+        </label>
+      </div>
     </div>
   );
 };

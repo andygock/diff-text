@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
-import { Position, Intent, OverlayToaster } from "@blueprintjs/core";
+
+/* import { Position, Intent, OverlayToaster } from "@blueprintjs/core";
 
 const toaster = OverlayToaster.create({
   position: Position.TOP,
@@ -12,4 +13,8 @@ export const showError = (message) => {
     message,
     intent: Intent.DANGER,
   });
+}; */
+
+export const showError = (message) => {
+  console.error("TODO: showError()", message);
 };

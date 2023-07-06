@@ -1,4 +1,3 @@
-import { TextArea } from "@blueprintjs/core";
 import classNames from "classnames";
 import PropTypes from "prop-types";
 import React from "react";
@@ -6,6 +5,11 @@ import DropTextArea from "react-dropzone-textarea";
 import prettyBytes from "pretty-bytes";
 import config from "../config";
 import { showError } from "../library/toaster";
+
+// wrap textarea in forwardRef to allow passing to DropTextArea
+const TextArea = React.forwardRef((props, ref) => (
+  <textarea {...props} ref={ref} />
+));
 
 const isBinary = (arrayBuffer) => {
   const bytes = new Uint8Array(arrayBuffer);
@@ -164,7 +168,8 @@ const TextInput = ({ onUpdate, value }) => {
         component={TextArea}
         textareaProps={{
           className: classNames("bp3-code-block", "input"),
-          fill: true,
+          // add props to <textarea> to have ti fully fill the width of containing element
+          style: { width: "100%" },
         }}
         onDropRead={(text) => onUpdate(text)}
         onError={(msg) => showError(`Error: ${msg}`)}

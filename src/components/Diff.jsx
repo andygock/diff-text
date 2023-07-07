@@ -1,7 +1,7 @@
 import mem from "mem";
 import PropTypes from "prop-types";
 import React from "react";
-import ReactDiffViewer from "react-diff-viewer";
+import ReactDiffViewer from "react-diff-viewer-continued";
 import Spark from "spark-md5";
 import config from "../config";
 
@@ -18,7 +18,7 @@ const Diff = ({ left, right, options }) => {
     right: md5(right),
   };
 
-  // check max line length, if longer than 1000 chars - do not render ReactDiffViewer as it may crash
+  // check max line length, if longer than permitted chars chars - do not render ReactDiffViewer as it may crash
   const maxInputLines = Math.max(
     getMaxLineLength(left),
     getMaxLineLength(right),

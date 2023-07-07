@@ -1,6 +1,6 @@
 # diff-text
 
-A web app for comparing two portions of text using [react-diff-viewer](https://github.com/praneshr/react-diff-viewer).
+A web app for comparing two portions of text using [react-diff-viewer-continued](https://aeolun.github.io/react-diff-viewer-continued/).
 
 - [Live demo hosted by Netlify](https://diff-text.netlify.app/)
 

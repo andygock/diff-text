@@ -37,6 +37,5 @@ If required, use the following Netlify build command
 
 ## References
 
-- [react-diff-viewer](https://github.com/praneshr/react-diff-viewer)
+- [react-diff-viewer-continued](https://github.com/aeolun/react-diff-viewer-continued)
 - [SheetJS](https://github.com/sheetjs/sheetjs)
-- [Blueprint](https://blueprintjs.com/docs/)

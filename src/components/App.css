@@ -23,7 +23,6 @@ code {
     monospace;
 }
 
-/* blueprint sets an outline we don't want */
 * {
   outline: none !important;
 }
@@ -146,4 +145,8 @@ a:hover {
 
 .compare-method {
   margin-bottom: 1rem;
+}
+
+.limits {
+  font-size: x-small;
 }

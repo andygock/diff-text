@@ -5,6 +5,8 @@ import Footer from "./Footer";
 import TextInput from "./TextInput";
 import DiffViewerOptions from "./DiffViewerOptions";
 import { initialLeft, initialRight } from "../library/inputs";
+import config from "../config";
+import PrettyBytes from "./PrettyBytes";
 
 const App = () => {
   const [inputLeft, setInputLeft] = React.useState(initialLeft);
@@ -18,7 +20,7 @@ const App = () => {
     <div className="app">
       <div className="grid-header">
         <p className="heading">
-          diff-text - Compare two portions of text in a browser. Supports text
+          diff-text - Compare two portions of text in the browser. Supports text
           and{" "}
           <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
             common spreadsheet files
@@ -49,9 +51,19 @@ const App = () => {
         <TextInput onUpdate={setInputLeft} value={inputLeft} />
         <TextInput onUpdate={setInputRight} value={inputRight} />
       </div>
-      <div className="output bp3-monospace-text">
+      <div className="output">
         <Diff left={inputLeft} right={inputRight} options={options} />
       </div>
+
+      {/* list config limits, maxLines and maxFileSize permitted */}
+      <div className="limits">
+        <p>
+          Limits: {config.maxLines.toLocaleString()} lines,{" "}
+          <PrettyBytes bytes={config.maxFileSize} /> file size and{" "}
+          {config.maxPermittedLineLength.toLocaleString()} characters per line.
+        </p>
+      </div>
+
       <Footer />
     </div>
   );

@@ -116,7 +116,7 @@ const TextInput = ({ onUpdate, value }) => {
           // check arrayBuffer if it is a binary file or text file
           if (isBinary(arrayBuffer)) {
             showError(
-              `Error: Detected non-spreadsheet binary file (over >5% chars are not text)`,
+              `Error: Detected non-spreadsheet binary file (over >5% of first 512 bytes is not text)`,
             );
             return;
           }

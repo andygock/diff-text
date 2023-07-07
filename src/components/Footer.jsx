@@ -13,7 +13,7 @@ const Footer = () => {
 
   return (
     <div className="footer bp3-text-small">
-      <a href="https://github.com/andygock/diff-text">Source</a>
+      <a href="https://github.com/andygock/diff-text">GitHub</a>
     </div>
   );
 };

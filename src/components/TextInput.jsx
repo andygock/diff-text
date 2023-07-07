@@ -11,25 +11,38 @@ const TextArea = React.forwardRef((props, ref) => (
   <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
 ));
 
+// check arrayBuffer if it is a binary file or text file, make the best guess
+// check first 512 bytes only
+// ascii text files should be in range of 0x00 to 0x7F
 const isBinary = (arrayBuffer) => {
-  const bytes = new Uint8Array(arrayBuffer);
-  const length = bytes.length;
-  let suspiciousBytes = 0;
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const maxBytes = Math.min(uint8Array.byteLength, 512);
 
-  // Check if the first 512 bytes contain any null bytes or non-printable ASCII characters
-  for (let i = 0; i < Math.min(length, 512); i++) {
-    const byte = bytes[i];
-    if (byte === 0) {
-      // null byte
-      suspiciousBytes++;
-    } else if (byte < 9 || (byte > 10 && byte < 32) || byte === 127) {
-      // non-printable ASCII character
-      suspiciousBytes++;
+  // count number of non-ascii bytes
+  let binaryBytes = 0;
+
+  // loop through up to first 512 bytes
+  for (let i = 0; i < maxBytes; i++) {
+    const byte = uint8Array[i];
+    // ignore CR and LF, these are allowed in text files
+    if (byte === 0x0a || byte === 0x0d) {
+      continue;
+    }
+
+    if (byte > 0x7f) {
+      // non-ascii byte
+      binaryBytes++;
     }
   }
 
-  // If more than 5% of the first 512 bytes are suspicious, assume it's a binary file
-  return suspiciousBytes / Math.min(length, 512) > 0.05;
+  // console.log(`binary bytes detected: ${binaryBytes}/${maxBytes}`);
+
+  // if more than 5% of bytes are non-ascii, then it is probably a binary file
+  if (binaryBytes / maxBytes > 0.05) {
+    return true;
+  }
+
+  return false;
 };
 
 // check whether file is a spreadsheet file
@@ -167,20 +180,20 @@ const TextInput = ({ onUpdate, value }) => {
         value={value}
         component={TextArea}
         textareaProps={{
-          className: classNames("bp3-code-block", "input"),
-          // add props to <textarea> to have ti fully fill the width of containing element
-          style: { width: "100%" },
+          className: classNames("textarea"),
+          rows: 25,
         }}
         onDropRead={(text) => onUpdate(text)}
         onError={(msg) => showError(`Error: ${msg}`)}
         customTextConverter={customTextConverter}
-        dropzoneProps={
-          {
-            // Ref: https://react-dropzone.js.org/
-            // extremely large files may cause a crash
-            // maxSize: config.maxFileSize,
-          }
-        }
+        dropzoneProps={{
+          // Ref: https://react-dropzone.js.org/
+          // extremely large files may cause a crash
+          // maxSize: config.maxFileSize,
+          className: "dropzone",
+          activeClassName: "dropzone-active",
+          rejectClassName: "dropzone-reject",
+        }}
       />
     </div>
   );

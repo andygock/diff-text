@@ -27,10 +27,12 @@ code {
   outline: none !important;
 }
 
-textarea {
+.textarea {
   margin-top: 0.2rem !important;
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+  width: 100%;
+  font-size: smaller;
 }
 
 .app {
@@ -71,8 +73,22 @@ textarea {
   padding-top: 2rem;
 }
 
+/* dropzone related styles */
 .dragover {
   background-color: greenyellow;
+}
+
+.dropzone {
+  border: 2px dashed #ccc;
+  padding: 20px;
+}
+
+.dropzone-active {
+  border-color: #007bff;
+}
+
+.dropzone-reject {
+  border-color: #dc3545;
 }
 
 .center {
@@ -94,7 +110,7 @@ textarea {
   text-align: right;
 }
 
-.options .bp3-button-group {
+.options {
   /* more space when buttong groups wrapped */
   margin: 2px;
 }

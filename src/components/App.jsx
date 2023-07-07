@@ -1,5 +1,7 @@
 import React from "react";
 import "./App.css";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Diff from "./Diff";
 import Footer from "./Footer";
 import TextInput from "./TextInput";
@@ -18,6 +20,7 @@ const App = () => {
 
   return (
     <div className="app">
+      <ToastContainer />
       <div className="grid-header">
         <p className="heading">
           diff-text - Compare two portions of text in the browser. Supports text

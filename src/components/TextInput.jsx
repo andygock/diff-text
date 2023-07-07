@@ -4,7 +4,7 @@ import React from "react";
 import DropTextArea from "react-dropzone-textarea";
 import prettyBytes from "pretty-bytes";
 import config from "../config";
-import { showError } from "../library/toaster";
+import { showError, showMessage } from "../library/toaster";
 
 // wrap textarea in forwardRef to allow passing to DropTextArea
 const TextArea = React.forwardRef((props, ref) => (
@@ -95,6 +95,9 @@ const TextInput = ({ onUpdate, value }) => {
           // dynamic load xlsx library and read XLSX ArrayBuffer
           import("xlsx").then((XLSX) => {
             try {
+              // record this to ead XLSx file
+              const timeStart = performance.now();
+
               // read workbook
               const wb = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -113,6 +116,10 @@ const TextInput = ({ onUpdate, value }) => {
               //   );
               //   return;
               // }
+
+              const timeEnd = performance.now();
+              const timeTaken = timeEnd - timeStart;
+              // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
 
               // console.log(csv);
               resolve(csv);
@@ -136,17 +143,20 @@ const TextInput = ({ onUpdate, value }) => {
 
           // check max file size
           // extremely large files may cause a crash
+          // readt-dropzone may already check for this when dropping files, would have already aborted if size is too large
           if (arrayBuffer.byteLength >= config.maxFileSize) {
             const prettyMaxSize = prettyBytes(config.maxFileSize);
             showError(`Error: File is larger than ${prettyMaxSize}`);
             return;
           }
 
+          // convert ArrayBuffer to string
           const string = arrayBufferToString(arrayBuffer);
 
           // check number of lines
           const lines = string.split("\n");
 
+          // check number of lines, very large files can cause ReactDiffViewer to crash
           if (lines.length > config.maxLines) {
             showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
             return;
@@ -165,8 +175,9 @@ const TextInput = ({ onUpdate, value }) => {
           resolve(string);
         }
       } catch (error) {
-        // Display error in textarea and console
-        console.error(error);
+        // parsing errors from xlsx may be thrown and caught here
+        showError(`Error: ${error.message}`);
+        // console.error(error);
         resolve(error);
       }
     });
@@ -189,10 +200,7 @@ const TextInput = ({ onUpdate, value }) => {
         dropzoneProps={{
           // Ref: https://react-dropzone.js.org/
           // extremely large files may cause a crash
-          // maxSize: config.maxFileSize,
-          className: "dropzone",
-          activeClassName: "dropzone-active",
-          rejectClassName: "dropzone-reject",
+          maxSize: config.maxFileSize,
         }}
       />
     </div>

@@ -4,7 +4,7 @@ const Footer = () => {
   // only show copyright notice when hosted on on gock.net
   if (window.location.hostname === "gock.net") {
     return (
-      <div className="footer bp3-text-small">
+      <div className="footer">
         &copy; <a href="https://gock.net/">Andy Gock</a> /{" "}
         <a href="https://github.com/andygock/diff-text">GitHub</a>
       </div>
@@ -12,7 +12,7 @@ const Footer = () => {
   }
 
   return (
-    <div className="footer bp3-text-small">
+    <div className="footer">
       <a href="https://github.com/andygock/diff-text">GitHub</a>
     </div>
   );

@@ -11,6 +11,105 @@ const TextArea = React.forwardRef((props, ref) => (
   <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
 ));
 
+// convert ArrayBuffer to text, compatible with spreadsheet formats
+const customTextConverter = (arrayBuffer, { file }) =>
+  new Promise((resolve, reject) => {
+    try {
+      if (isSpreadsheetFile(file)) {
+        //
+        // compatible spreadsheet format, based on file extension
+        //
+
+        // dynamic load xlsx library and read XLSX ArrayBuffer
+        import("xlsx").then((XLSX) => {
+          try {
+            // record this to ead XLSx file
+            const timeStart = performance.now();
+
+            // read workbook
+            const wb = XLSX.read(arrayBuffer, { type: "array" });
+
+            // only supports reading of the first worksheet, converted to CSV
+            const ws = wb.Sheets[wb.SheetNames[0]];
+
+            // https://github.com/sheetjs/sheetjs#utility-functions
+            const csv = XLSX.utils.sheet_to_csv(ws);
+
+            //
+            // don't check lines, sometimes can be many blank lines at end of spreadsheet
+            //
+            // if (csv.length > config.maxLines) {
+            //   showError(
+            //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
+            //   );
+            //   return;
+            // }
+
+            const timeEnd = performance.now();
+            const timeTaken = timeEnd - timeStart;
+            // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
+
+            // console.log(csv);
+            resolve(csv);
+          } catch (e) {
+            // problem reading spreadsheet
+            showError(`Error: ${e.message}`);
+          }
+        });
+      } else {
+        //
+        // is standard text, or it could be some other file which is not a spreadsheet
+        //
+
+        // check arrayBuffer if it is a binary file or text file
+        if (isBinary(arrayBuffer)) {
+          showError(
+            `Error: Detected non-spreadsheet binary file (over >5% of first 512 bytes is not text)`,
+          );
+          return;
+        }
+
+        // check max file size
+        // extremely large files may cause a crash
+        // readt-dropzone may already check for this when dropping files, would have already aborted if size is too large
+        if (arrayBuffer.byteLength >= config.maxFileSize) {
+          const prettyMaxSize = prettyBytes(config.maxFileSize);
+          showError(`Error: File is larger than ${prettyMaxSize}`);
+          return;
+        }
+
+        // convert ArrayBuffer to string
+        const string = arrayBufferToString(arrayBuffer);
+
+        // check number of lines
+        const lines = string.split("\n");
+
+        // check number of lines, very large files can cause ReactDiffViewer to crash
+        if (lines.length > config.maxLines) {
+          showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
+          return;
+        }
+
+        // check length of lines, very long lines can cause ReactDiffViewer to crash
+        const maxLineLength = Math.max(...lines.map((line) => line.length));
+        if (maxLineLength > config.maxPermittedLineLength) {
+          showError(
+            `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+          );
+          return;
+        }
+
+        // console.log(string);
+        resolve(string);
+      }
+    } catch (error) {
+      // parsing errors from xlsx may be thrown and caught here
+      showError(`Error: ${error.message}`);
+      // console.error(error);
+      resolve(error);
+    }
+  });
+
 // check arrayBuffer if it is a binary file or text file, make the best guess
 // check first 512 bytes only
 // ascii text files should be in range of 0x00 to 0x7F
@@ -82,105 +181,6 @@ const arrayBufferToString = (arrayBuffer) =>
 
 const TextInput = ({ onUpdate, value }) => {
   // https://react-dropzone.js.org/
-
-  // convert ArrayBuffer to text, compatible with spreadsheet formats
-  const customTextConverter = (arrayBuffer, { file }) =>
-    new Promise((resolve, reject) => {
-      try {
-        if (isSpreadsheetFile(file)) {
-          //
-          // compatible spreadsheet format, based on file extension
-          //
-
-          // dynamic load xlsx library and read XLSX ArrayBuffer
-          import("xlsx").then((XLSX) => {
-            try {
-              // record this to ead XLSx file
-              const timeStart = performance.now();
-
-              // read workbook
-              const wb = XLSX.read(arrayBuffer, { type: "array" });
-
-              // only supports reading of the first worksheet, converted to CSV
-              const ws = wb.Sheets[wb.SheetNames[0]];
-
-              // https://github.com/sheetjs/sheetjs#utility-functions
-              const csv = XLSX.utils.sheet_to_csv(ws);
-
-              //
-              // don't check lines, sometimes can be many blank lines at end of spreadsheet
-              //
-              // if (csv.length > config.maxLines) {
-              //   showError(
-              //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
-              //   );
-              //   return;
-              // }
-
-              const timeEnd = performance.now();
-              const timeTaken = timeEnd - timeStart;
-              // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
-
-              // console.log(csv);
-              resolve(csv);
-            } catch (e) {
-              // problem reading spreadsheet
-              showError(`Error: ${e.message}`);
-            }
-          });
-        } else {
-          //
-          // is standard text, or it could be some other file which is not a spreadsheet
-          //
-
-          // check arrayBuffer if it is a binary file or text file
-          if (isBinary(arrayBuffer)) {
-            showError(
-              `Error: Detected non-spreadsheet binary file (over >5% of first 512 bytes is not text)`,
-            );
-            return;
-          }
-
-          // check max file size
-          // extremely large files may cause a crash
-          // readt-dropzone may already check for this when dropping files, would have already aborted if size is too large
-          if (arrayBuffer.byteLength >= config.maxFileSize) {
-            const prettyMaxSize = prettyBytes(config.maxFileSize);
-            showError(`Error: File is larger than ${prettyMaxSize}`);
-            return;
-          }
-
-          // convert ArrayBuffer to string
-          const string = arrayBufferToString(arrayBuffer);
-
-          // check number of lines
-          const lines = string.split("\n");
-
-          // check number of lines, very large files can cause ReactDiffViewer to crash
-          if (lines.length > config.maxLines) {
-            showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
-            return;
-          }
-
-          // check length of lines, very long lines can cause ReactDiffViewer to crash
-          const maxLineLength = Math.max(...lines.map((line) => line.length));
-          if (maxLineLength > config.maxPermittedLineLength) {
-            showError(
-              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
-            );
-            return;
-          }
-
-          // console.log(string);
-          resolve(string);
-        }
-      } catch (error) {
-        // parsing errors from xlsx may be thrown and caught here
-        showError(`Error: ${error.message}`);
-        // console.error(error);
-        resolve(error);
-      }
-    });
 
   return (
     <div>

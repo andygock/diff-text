@@ -1,4 +1,4 @@
-import mem from "mem";
+import memoize from "memoize";
 import PropTypes from "prop-types";
 import React from "react";
 import ReactDiffViewer from "react-diff-viewer-continued";
@@ -6,7 +6,7 @@ import Spark from "spark-md5";
 import config from "../config";
 
 // memoized MD5 calculation
-const md5 = mem((s) => Spark.hash(s));
+const md5 = memoize((s) => Spark.hash(s));
 
 const getMaxLineLength = (str) =>
   Math.max(...str.split("\n").map((s) => s.length));

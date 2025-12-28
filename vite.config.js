@@ -8,4 +8,10 @@ export default defineConfig({
   define: {
     global: {},
   },
+  test: {
+    environment: "jsdom",
+    setupFiles: "./src/test/setupTests.js",
+    clearMocks: true,
+    restoreMocks: true,
+  },
 });

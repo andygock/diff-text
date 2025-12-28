@@ -31,6 +31,18 @@ Build production ready static files to `dist/`:
 
     pnpm build
 
+## Testing
+
+This project uses Vitest with React Testing Library.
+
+Run the full test suite:
+
+    pnpm test
+
+Run tests in watch mode:
+
+    pnpm test:watch
+
 If required, use the following Netlify build command
 
     pnpm build || ( npm install pnpm && pnpm build )

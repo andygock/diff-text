@@ -11,138 +11,130 @@ const TextArea = React.forwardRef((props, ref) => (
   <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
 ));
 
-// convert ArrayBuffer to text, compatible with spreadsheet formats
-const customTextConverter = (arrayBuffer, { file } = {}) =>
-  new Promise((resolve) => {
-    const fail = (message) => {
-      showError(message);
-      resolve(null);
-    };
-
-    try {
-      if (!arrayBuffer) {
-        fail("Error: No file data to read");
-        return;
-      }
-
-      if (isSpreadsheetFile(file)) {
-        //
-        // compatible spreadsheet format, based on file extension
-        //
-
-        // dynamic load xlsx library and read XLSX ArrayBuffer
-        import("xlsx")
-          .then((XLSX) => {
-            try {
-              // record this to ead XLSx file
-              const timeStart = performance.now();
-
-              // read workbook
-              const wb = XLSX.read(arrayBuffer, { type: "array" });
-
-              if (!wb.SheetNames || wb.SheetNames.length === 0) {
-                fail("Error: Spreadsheet has no worksheets");
-                return;
-              }
-
-              // only supports reading of the first worksheet, converted to CSV
-              const ws = wb.Sheets[wb.SheetNames[0]];
-
-              // https://github.com/sheetjs/sheetjs#utility-functions
-              const csv = XLSX.utils.sheet_to_csv(ws);
-
-              const lines = csv.split("\n");
-              while (lines.length > 0 && lines[lines.length - 1] === "") {
-                lines.pop();
-              }
-
-              if (lines.length > config.maxLines) {
-                fail(
-                  `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`,
-                );
-                return;
-              }
-
-              const maxLineLength =
-                lines.length === 0
-                  ? 0
-                  : Math.max(...lines.map((line) => line.length));
-              if (maxLineLength > config.maxPermittedLineLength) {
-                fail(
-                  `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
-                );
-                return;
-              }
-
-              const timeEnd = performance.now();
-              const timeTaken = timeEnd - timeStart;
-              // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
-
-              // console.log(csv);
-              resolve(csv);
-            } catch (e) {
-              // problem reading spreadsheet
-              fail(`Error: ${e.message}`);
-            }
-          })
-          .catch((error) => {
-            fail(`Error: ${error.message}`);
-          });
-      } else {
-        //
-        // is standard text, or it could be some other file which is not a spreadsheet
-        //
-
-        // check arrayBuffer if it is a binary file or text file
-        if (isBinary(arrayBuffer)) {
-          fail(
-            "Error: Detected non-text file (over 5% of first 512 bytes are control characters)",
-          );
-          return;
-        }
-
-        // check max file size
-        // extremely large files may cause a crash
-        // readt-dropzone may already check for this when dropping files, would have already aborted if size is too large
-        if (arrayBuffer.byteLength >= config.maxFileSize) {
-          const prettyMaxSize = prettyBytes(config.maxFileSize);
-          fail(`Error: File is larger than ${prettyMaxSize}`);
-          return;
-        }
-
-        // convert ArrayBuffer to string
-        const string = arrayBufferToString(arrayBuffer);
-
-        // check number of lines
-        const lines = string.split("\n");
-
-        // check number of lines, very large files can cause ReactDiffViewer to crash
-        if (lines.length > config.maxLines) {
-          fail(`Error: Exceeded maximum ${config.maxLines} text lines`);
-          return;
-        }
-
-        // check length of lines, very long lines can cause ReactDiffViewer to crash
-        const maxLineLength =
-          lines.length === 0
-            ? 0
-            : Math.max(...lines.map((line) => line.length));
-        if (maxLineLength > config.maxPermittedLineLength) {
-          fail(
-            `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
-          );
-          return;
-        }
-
-        // console.log(string);
-        resolve(string);
-      }
-    } catch (error) {
-      // parsing errors from xlsx may be thrown and caught here
-      fail(`Error: ${error.message}`);
-      // console.error(error);
+const createCustomTextConverter = (callbacks = {}) => {
+  const notifyFailure = (message) => {
+    if (callbacks.onFailure) {
+      callbacks.onFailure(message);
     }
-  });
+  };
+
+  const notifySuccess = () => {
+    if (callbacks.onSuccess) {
+      callbacks.onSuccess();
+    }
+  };
+
+  return (arrayBuffer, { file } = {}) => {
+    if (callbacks.onStart) {
+      callbacks.onStart(file);
+    }
+    return new Promise((resolve) => {
+      const fail = (message) => {
+        showError(message);
+        notifyFailure(message);
+        resolve(null);
+      };
+
+      try {
+        if (!arrayBuffer) {
+          fail("Error: No file data to read");
+          return;
+        }
+
+        if (isSpreadsheetFile(file)) {
+          // compatible spreadsheet format, based on file extension
+          import("xlsx")
+            .then((XLSX) => {
+              try {
+                const timeStart = performance.now();
+                const wb = XLSX.read(arrayBuffer, { type: "array" });
+
+                if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                  fail("Error: Spreadsheet has no worksheets");
+                  return;
+                }
+
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const csv = XLSX.utils.sheet_to_csv(ws);
+
+                const lines = csv.split("\n");
+                while (lines.length > 0 && lines[lines.length - 1] === "") {
+                  lines.pop();
+                }
+
+                if (lines.length > config.maxLines) {
+                  fail(
+                    `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`,
+                  );
+                  return;
+                }
+
+                const maxLineLength =
+                  lines.length === 0
+                    ? 0
+                    : Math.max(...lines.map((line) => line.length));
+                if (maxLineLength > config.maxPermittedLineLength) {
+                  fail(
+                    `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+                  );
+                  return;
+                }
+
+                const timeEnd = performance.now();
+                const timeTaken = timeEnd - timeStart;
+                // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
+
+                resolve(csv);
+                notifySuccess();
+              } catch (e) {
+                fail(`Error: ${e.message}`);
+              }
+            })
+            .catch((error) => {
+              fail(`Error: ${error.message}`);
+            });
+        } else {
+          if (isBinary(arrayBuffer)) {
+            fail(
+              "Error: Detected non-text file (over 5% of first 512 bytes are control characters)",
+            );
+            return;
+          }
+
+          if (arrayBuffer.byteLength >= config.maxFileSize) {
+            const prettyMaxSize = prettyBytes(config.maxFileSize);
+            fail(`Error: File is larger than ${prettyMaxSize}`);
+            return;
+          }
+
+          const string = arrayBufferToString(arrayBuffer);
+          const lines = string.split("\n");
+
+          if (lines.length > config.maxLines) {
+            fail(`Error: Exceeded maximum ${config.maxLines} text lines`);
+            return;
+          }
+
+          const maxLineLength =
+            lines.length === 0
+              ? 0
+              : Math.max(...lines.map((line) => line.length));
+          if (maxLineLength > config.maxPermittedLineLength) {
+            fail(
+              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+            );
+            return;
+          }
+
+          resolve(string);
+          notifySuccess();
+        }
+      } catch (error) {
+        fail(`Error: ${error.message}`);
+      }
+    });
+  };
+};
 
 // check arrayBuffer if it is a binary file or text file, make the best guess
 // check first 512 bytes only
@@ -166,7 +158,7 @@ const isBinary = (arrayBuffer) => {
       continue;
     }
 
-    if (byte === 0x00 || (byte < 0x20 || byte === 0x7f)) {
+    if (byte === 0x00 || byte < 0x20 || byte === 0x7f) {
       binaryBytes++;
     }
   }
@@ -221,10 +213,80 @@ const arrayBufferToString = (arrayBuffer) =>
   new TextDecoder("utf-8").decode(arrayBuffer);
 
 const TextInput = ({ onUpdate, value }) => {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [dropStatus, setDropStatus] = React.useState({
+    active: false,
+    progress: 0,
+    message: "",
+  });
+  const progressIntervalRef = React.useRef(null);
+  const hideTimeoutRef = React.useRef(null);
+
+  const cancelTimers = React.useCallback(() => {
+    if (progressIntervalRef.current) {
+      window.clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const showStatus = React.useCallback((message, progress) => {
+    setDropStatus({ active: true, progress, message });
+  }, []);
+
+  const startProgress = React.useCallback(
+    (file) => {
+      const fileLabel = file?.name ?? "file";
+      cancelTimers();
+      showStatus(`Reading ${fileLabel}`, 0);
+      progressIntervalRef.current = window.setInterval(() => {
+        setDropStatus((previous) => ({
+          ...previous,
+          progress: Math.min(95, previous.progress + Math.random() * 12 + 3),
+        }));
+      }, 220);
+    },
+    [cancelTimers, showStatus],
+  );
+
+  const completeProgress = React.useCallback(() => {
+    cancelTimers();
+    showStatus("Ready", 100);
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setDropStatus({ active: false, progress: 0, message: "" });
+    }, 900);
+  }, [cancelTimers, showStatus]);
+
+  const failProgress = React.useCallback(
+    (message) => {
+      cancelTimers();
+      showStatus(message || "Unable to read file", 0);
+      hideTimeoutRef.current = window.setTimeout(() => {
+        setDropStatus({ active: false, progress: 0, message: "" });
+      }, 1500);
+    },
+    [cancelTimers, showStatus],
+  );
+
+  React.useEffect(() => cancelTimers, [cancelTimers]);
+
+  const customTextConverter = React.useMemo(
+    () =>
+      createCustomTextConverter({
+        onStart: startProgress,
+        onSuccess: completeProgress,
+        onFailure: failProgress,
+      }),
+    [startProgress, completeProgress, failProgress],
+  );
+
   // https://react-dropzone.js.org/
 
   return (
-    <div>
+    <div className="textarea-wrapper">
       <DropTextArea
         onChange={(e) => {
           onUpdate(e.target.value);
@@ -232,22 +294,53 @@ const TextInput = ({ onUpdate, value }) => {
         value={value}
         component={TextArea}
         textareaProps={{
-          className: classNames("textarea"),
+          className: classNames("textarea", { dragging: isDragging }),
           rows: 25,
         }}
         onDropRead={(text) => {
+          setIsDragging(false);
           if (typeof text === "string") {
             onUpdate(text);
+            completeProgress();
+          } else {
+            failProgress("Could not read dropped file");
           }
         }}
-        onError={(msg) => showError(`Error: ${msg}`)}
+        onError={(msg) => {
+          setIsDragging(false);
+          const message = msg || "Unexpected error";
+          showError(`Error: ${message}`);
+          failProgress(message);
+        }}
         customTextConverter={customTextConverter}
         dropzoneProps={{
           // Ref: https://react-dropzone.js.org/
           // extremely large files may cause a crash
           maxSize: config.maxFileSize,
+          onDragEnter: () => setIsDragging(true),
+          onDragLeave: () => setIsDragging(false),
         }}
       />
+      {dropStatus.active && (
+        <div className="drop-progress" aria-live="polite">
+          <div className="drop-progress-header">
+            <span>{dropStatus.message}</span>
+            <span>{Math.round(dropStatus.progress)}%</span>
+          </div>
+          <div
+            className="drop-progress-bar"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={Math.round(dropStatus.progress)}
+          >
+            <div
+              className="drop-progress-fill"
+              style={{ width: `${Math.min(100, dropStatus.progress)}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

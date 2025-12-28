@@ -1,23 +1,12 @@
-import memoize from "memoize";
 import PropTypes from "prop-types";
 import React from "react";
 import ReactDiffViewer from "react-diff-viewer-continued";
-import Spark from "spark-md5";
 import config from "../config";
-
-// memoized MD5 calculation
-const md5 = memoize((s) => Spark.hash(s));
 
 const getMaxLineLength = (str) =>
   Math.max(...str.split("\n").map((s) => s.length));
 
 const Diff = ({ left, right, options }) => {
-  // calculate md5 hash
-  const hash = {
-    left: md5(left),
-    right: md5(right),
-  };
-
   // check max line length, if longer than permitted chars chars - do not render ReactDiffViewer as it may crash
   const maxInputLines = Math.max(
     getMaxLineLength(left),
@@ -33,7 +22,7 @@ const Diff = ({ left, right, options }) => {
     );
   }
 
-  if (hash.left === hash.right) {
+  if (left === right) {
     // content is identical
     return <p className="identical">Content is identical</p>;
   }

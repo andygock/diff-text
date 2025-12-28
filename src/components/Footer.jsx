@@ -2,7 +2,10 @@ import React from "react";
 
 const Footer = () => {
   // only show copyright notice when hosted on on gock.net
-  if (window.location.hostname === "gock.net") {
+  const hostname =
+    typeof window === "object" ? window.location.hostname : "";
+
+  if (hostname === "gock.net") {
     return (
       <div className="footer">
         &copy; <a href="https://gock.net/">Andy Gock</a> /{" "}

@@ -4,7 +4,7 @@ import React from "react";
 import DropTextArea from "react-dropzone-textarea";
 import prettyBytes from "pretty-bytes";
 import config from "../config";
-import { showError, showMessage } from "../library/toaster";
+import { showError } from "../library/toaster";
 
 // wrap textarea in forwardRef to allow passing to DropTextArea
 const TextArea = React.forwardRef((props, ref) => (
@@ -12,50 +12,82 @@ const TextArea = React.forwardRef((props, ref) => (
 ));
 
 // convert ArrayBuffer to text, compatible with spreadsheet formats
-const customTextConverter = (arrayBuffer, { file }) =>
-  new Promise((resolve, reject) => {
+const customTextConverter = (arrayBuffer, { file } = {}) =>
+  new Promise((resolve) => {
+    const fail = (message) => {
+      showError(message);
+      resolve(null);
+    };
+
     try {
+      if (!arrayBuffer) {
+        fail("Error: No file data to read");
+        return;
+      }
+
       if (isSpreadsheetFile(file)) {
         //
         // compatible spreadsheet format, based on file extension
         //
 
         // dynamic load xlsx library and read XLSX ArrayBuffer
-        import("xlsx").then((XLSX) => {
-          try {
-            // record this to ead XLSx file
-            const timeStart = performance.now();
+        import("xlsx")
+          .then((XLSX) => {
+            try {
+              // record this to ead XLSx file
+              const timeStart = performance.now();
 
-            // read workbook
-            const wb = XLSX.read(arrayBuffer, { type: "array" });
+              // read workbook
+              const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-            // only supports reading of the first worksheet, converted to CSV
-            const ws = wb.Sheets[wb.SheetNames[0]];
+              if (!wb.SheetNames || wb.SheetNames.length === 0) {
+                fail("Error: Spreadsheet has no worksheets");
+                return;
+              }
 
-            // https://github.com/sheetjs/sheetjs#utility-functions
-            const csv = XLSX.utils.sheet_to_csv(ws);
+              // only supports reading of the first worksheet, converted to CSV
+              const ws = wb.Sheets[wb.SheetNames[0]];
 
-            //
-            // don't check lines, sometimes can be many blank lines at end of spreadsheet
-            //
-            // if (csv.length > config.maxLines) {
-            //   showError(
-            //     `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`
-            //   );
-            //   return;
-            // }
+              // https://github.com/sheetjs/sheetjs#utility-functions
+              const csv = XLSX.utils.sheet_to_csv(ws);
 
-            const timeEnd = performance.now();
-            const timeTaken = timeEnd - timeStart;
-            // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
+              const lines = csv.split("\n");
+              while (lines.length > 0 && lines[lines.length - 1] === "") {
+                lines.pop();
+              }
 
-            // console.log(csv);
-            resolve(csv);
-          } catch (e) {
-            // problem reading spreadsheet
-            showError(`Error: ${e.message}`);
-          }
-        });
+              if (lines.length > config.maxLines) {
+                fail(
+                  `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`,
+                );
+                return;
+              }
+
+              const maxLineLength =
+                lines.length === 0
+                  ? 0
+                  : Math.max(...lines.map((line) => line.length));
+              if (maxLineLength > config.maxPermittedLineLength) {
+                fail(
+                  `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+                );
+                return;
+              }
+
+              const timeEnd = performance.now();
+              const timeTaken = timeEnd - timeStart;
+              // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
+
+              // console.log(csv);
+              resolve(csv);
+            } catch (e) {
+              // problem reading spreadsheet
+              fail(`Error: ${e.message}`);
+            }
+          })
+          .catch((error) => {
+            fail(`Error: ${error.message}`);
+          });
       } else {
         //
         // is standard text, or it could be some other file which is not a spreadsheet
@@ -63,8 +95,8 @@ const customTextConverter = (arrayBuffer, { file }) =>
 
         // check arrayBuffer if it is a binary file or text file
         if (isBinary(arrayBuffer)) {
-          showError(
-            `Error: Detected non-spreadsheet binary file (over >5% of first 512 bytes is not text)`,
+          fail(
+            "Error: Detected non-text file (over 5% of first 512 bytes are control characters)",
           );
           return;
         }
@@ -74,7 +106,7 @@ const customTextConverter = (arrayBuffer, { file }) =>
         // readt-dropzone may already check for this when dropping files, would have already aborted if size is too large
         if (arrayBuffer.byteLength >= config.maxFileSize) {
           const prettyMaxSize = prettyBytes(config.maxFileSize);
-          showError(`Error: File is larger than ${prettyMaxSize}`);
+          fail(`Error: File is larger than ${prettyMaxSize}`);
           return;
         }
 
@@ -86,14 +118,17 @@ const customTextConverter = (arrayBuffer, { file }) =>
 
         // check number of lines, very large files can cause ReactDiffViewer to crash
         if (lines.length > config.maxLines) {
-          showError(`Error: Exceeded maximum ${config.maxLines} text lines`);
+          fail(`Error: Exceeded maximum ${config.maxLines} text lines`);
           return;
         }
 
         // check length of lines, very long lines can cause ReactDiffViewer to crash
-        const maxLineLength = Math.max(...lines.map((line) => line.length));
+        const maxLineLength =
+          lines.length === 0
+            ? 0
+            : Math.max(...lines.map((line) => line.length));
         if (maxLineLength > config.maxPermittedLineLength) {
-          showError(
+          fail(
             `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
           );
           return;
@@ -104,39 +139,41 @@ const customTextConverter = (arrayBuffer, { file }) =>
       }
     } catch (error) {
       // parsing errors from xlsx may be thrown and caught here
-      showError(`Error: ${error.message}`);
+      fail(`Error: ${error.message}`);
       // console.error(error);
-      resolve(error);
     }
   });
 
 // check arrayBuffer if it is a binary file or text file, make the best guess
 // check first 512 bytes only
-// ascii text files should be in range of 0x00 to 0x7F
 const isBinary = (arrayBuffer) => {
   const uint8Array = new Uint8Array(arrayBuffer);
   const maxBytes = Math.min(uint8Array.byteLength, 512);
 
-  // count number of non-ascii bytes
+  if (maxBytes === 0) {
+    return false;
+  }
+
+  // count number of control bytes
   let binaryBytes = 0;
 
   // loop through up to first 512 bytes
   for (let i = 0; i < maxBytes; i++) {
     const byte = uint8Array[i];
-    // ignore CR and LF, these are allowed in text files
-    if (byte === 0x0a || byte === 0x0d) {
+
+    // ignore tab, CR, and LF
+    if (byte === 0x09 || byte === 0x0a || byte === 0x0d) {
       continue;
     }
 
-    if (byte > 0x7f) {
-      // non-ascii byte
+    if (byte === 0x00 || (byte < 0x20 || byte === 0x7f)) {
       binaryBytes++;
     }
   }
 
   // console.log(`binary bytes detected: ${binaryBytes}/${maxBytes}`);
 
-  // if more than 5% of bytes are non-ascii, then it is probably a binary file
+  // if more than 5% of bytes are control characters, then it is probably a binary file
   if (binaryBytes / maxBytes > 0.05) {
     return true;
   }
@@ -146,6 +183,10 @@ const isBinary = (arrayBuffer) => {
 
 // check whether file is a spreadsheet file
 const isSpreadsheetFile = (file) => {
+  if (!file?.name) {
+    return false;
+  }
+
   /* eslint-disable-next-line no-bitwise */
   const ext = file.name.slice(((file.name.lastIndexOf(".") - 1) >>> 0) + 2);
   return [
@@ -194,7 +235,11 @@ const TextInput = ({ onUpdate, value }) => {
           className: classNames("textarea"),
           rows: 25,
         }}
-        onDropRead={(text) => onUpdate(text)}
+        onDropRead={(text) => {
+          if (typeof text === "string") {
+            onUpdate(text);
+          }
+        }}
         onError={(msg) => showError(`Error: ${msg}`)}
         customTextConverter={customTextConverter}
         dropzoneProps={{

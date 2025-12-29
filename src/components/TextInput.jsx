@@ -10,6 +10,7 @@ import { showError } from "../library/toaster";
 const TextArea = React.forwardRef((props, ref) => (
   <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
 ));
+TextArea.displayName = "TextArea";
 
 const createCustomTextConverter = (callbacks = {}) => {
   const notifyFailure = (message) => {
@@ -48,7 +49,7 @@ const createCustomTextConverter = (callbacks = {}) => {
             .then((XLSX) => {
               try {
                 // record this to read XLSX file
-                const timeStart = performance.now();
+                // const timeStart = performance.now();
                 const wb = XLSX.read(arrayBuffer, { type: "array" });
 
                 if (!wb.SheetNames || wb.SheetNames.length === 0) {
@@ -85,8 +86,8 @@ const createCustomTextConverter = (callbacks = {}) => {
                   return;
                 }
 
-                const timeEnd = performance.now();
-                const timeTaken = timeEnd - timeStart;
+                // const timeEnd = performance.now();
+                // const timeTaken = timeEnd - timeStart;
                 // showMessage(`Parsed spreadsheet in ${timeTaken.toFixed(2)}ms`);
 
                 resolve(csv);
@@ -195,7 +196,6 @@ const isSpreadsheetFile = (file) => {
     return false;
   }
 
-  /* eslint-disable-next-line no-bitwise */
   const ext = file.name.slice(((file.name.lastIndexOf(".") - 1) >>> 0) + 2);
   return [
     "xls",
@@ -291,6 +291,7 @@ const TextInput = ({ onUpdate, value }) => {
 
   const customTextConverter = React.useMemo(
     () =>
+      // eslint-disable-next-line react-hooks/refs
       createCustomTextConverter({
         onStart: startProgress,
         onSuccess: completeProgress,

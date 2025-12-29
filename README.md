@@ -2,7 +2,7 @@
 
 A web app for comparing two portions of text using [react-diff-viewer-continued](https://aeolun.github.io/react-diff-viewer-continued/).
 
-- [Live demo hosted on GitHub Pages](https://diff.gock.net/)
+- Live demo at [diff.gock.net](https://diff.gock.net/)
 
 ## Screenshot
 

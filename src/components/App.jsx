@@ -17,9 +17,13 @@ const App = () => {
     splitView: false,
     compareMethod: "diffChars",
   });
+  const deferredLeft = React.useDeferredValue(inputLeft); // keep diff SPA responsive for large files
+  const deferredRight = React.useDeferredValue(inputRight);
+  const isDiffPending =
+    deferredLeft !== inputLeft || deferredRight !== inputRight;
 
   return (
-    <div className="app">
+    <div className={isDiffPending ? "app app-pending" : "app"}>
       <ToastContainer />
       <div className="grid-header">
         <p className="heading">
@@ -55,7 +59,12 @@ const App = () => {
         <TextInput onUpdate={setInputRight} value={inputRight} />
       </div>
       <div className="output">
-        <Diff left={inputLeft} right={inputRight} options={options} />
+        {isDiffPending && (
+          <div className="diff-pending" aria-live="polite">
+            Preparing diff...
+          </div>
+        )}
+        <Diff left={deferredLeft} right={deferredRight} options={options} />
       </div>
 
       {/* list config limits, maxLines and maxFileSize permitted */}

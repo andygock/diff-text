@@ -46,6 +46,10 @@ code {
   margin: 1rem;
 }
 
+.app-pending {
+  padding-bottom: 4rem;
+}
+
 .heading {
   margin: 0 0 0 0;
 }
@@ -62,6 +66,24 @@ code {
   grid-template-columns: 1fr 50px 1fr;
   grid-column-gap: 1rem;
   /* margin-bottom: 1rem; */
+}
+
+.output {
+  position: relative;
+}
+
+.diff-pending {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 62, 0, 0.95);
+  color: #e8ffea;
+  padding: 0.5rem 1rem;
+  font-size: 1.1rem;
+  text-align: center;
+  z-index: 1000;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .input {

@@ -6,13 +6,13 @@ export const showError = (message) => {
   // console.error("TODO: showError()", message);
   toast(message, {
     type: "error",
-    position: toast.POSITION.TOP_CENTER,
+    position: "top-center",
   });
 };
 
 export const showMessage = (message) => {
   toast(message, {
     type: "info",
-    position: toast.POSITION.TOP_CENTER,
+    position: "top-center",
   });
 };

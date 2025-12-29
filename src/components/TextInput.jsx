@@ -70,7 +70,7 @@ const createCustomTextConverter = (callbacks = {}) => {
 
                 if (lines.length > config.maxLines) {
                   fail(
-                    `Error: Exceeded maximum ${config.maxLines} spreadsheet lines`,
+                    `Error: Exceeded maximum ${config.maxLines} spreadsheet lines (found ${lines.length})`,
                   );
                   return;
                 }
@@ -81,7 +81,7 @@ const createCustomTextConverter = (callbacks = {}) => {
                     : Math.max(...lines.map((line) => line.length));
                 if (maxLineLength > config.maxPermittedLineLength) {
                   fail(
-                    `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+                    `Error: Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
                   );
                   return;
                 }
@@ -126,7 +126,9 @@ const createCustomTextConverter = (callbacks = {}) => {
           const lines = string.split("\n");
 
           if (lines.length > config.maxLines) {
-            fail(`Error: Exceeded maximum ${config.maxLines} text lines`);
+            fail(
+              `Error: Exceeded maximum ${config.maxLines} lines (found ${lines.length})`,
+            );
             return;
           }
 
@@ -137,7 +139,7 @@ const createCustomTextConverter = (callbacks = {}) => {
               : Math.max(...lines.map((line) => line.length));
           if (maxLineLength > config.maxPermittedLineLength) {
             fail(
-              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length`,
+              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
             );
             return;
           }
@@ -235,8 +237,16 @@ const TextInput = ({ onUpdate, value }) => {
     progress: 0,
     message: "",
   });
+  const [localValue, setLocalValue] = React.useState(value);
   const progressIntervalRef = React.useRef(null);
   const hideTimeoutRef = React.useRef(null);
+  const debounceTimeoutRef = React.useRef(null);
+
+  const DEBOUNCE_DELAY = 500; // ms of inactivity before processing text input
+
+  React.useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
 
   const cancelTimers = React.useCallback(() => {
     if (progressIntervalRef.current) {
@@ -261,7 +271,7 @@ const TextInput = ({ onUpdate, value }) => {
       progressIntervalRef.current = window.setInterval(() => {
         setDropStatus((previous) => ({
           ...previous,
-          progress: Math.min(95, previous.progress + Math.random() * 12 + 3),
+          progress: Math.min(99, previous.progress + Math.random() * 12 + 3),
         }));
       }, 220);
     },
@@ -289,6 +299,27 @@ const TextInput = ({ onUpdate, value }) => {
 
   React.useEffect(() => cancelTimers, [cancelTimers]);
 
+  const debouncedOnUpdate = React.useCallback(
+    (newValue) => {
+      if (debounceTimeoutRef.current) {
+        window.clearTimeout(debounceTimeoutRef.current);
+      }
+      debounceTimeoutRef.current = window.setTimeout(() => {
+        onUpdate(newValue);
+      }, DEBOUNCE_DELAY);
+    },
+    [onUpdate, DEBOUNCE_DELAY],
+  );
+
+  React.useEffect(
+    () => () => {
+      if (debounceTimeoutRef.current) {
+        window.clearTimeout(debounceTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
   const customTextConverter = React.useMemo(
     () =>
       // eslint-disable-next-line react-hooks/refs
@@ -306,9 +337,11 @@ const TextInput = ({ onUpdate, value }) => {
     <div className="textarea-wrapper">
       <DropTextArea
         onChange={(e) => {
-          onUpdate(e.target.value);
+          const newValue = e.target.value;
+          setLocalValue(newValue);
+          debouncedOnUpdate(newValue);
         }}
-        value={value}
+        value={localValue}
         component={TextArea}
         textareaProps={{
           className: classNames("textarea", { dragging: isDragging }),

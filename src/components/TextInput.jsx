@@ -43,9 +43,11 @@ const createCustomTextConverter = (callbacks = {}) => {
 
         if (isSpreadsheetFile(file)) {
           // compatible spreadsheet format, based on file extension
+          // dynamic load xlsx library and read XLSX ArrayBuffer
           import("xlsx")
             .then((XLSX) => {
               try {
+                // record this to read XLSX file
                 const timeStart = performance.now();
                 const wb = XLSX.read(arrayBuffer, { type: "array" });
 
@@ -54,7 +56,10 @@ const createCustomTextConverter = (callbacks = {}) => {
                   return;
                 }
 
+                // only supports reading of the first worksheet, converted to CSV
                 const ws = wb.Sheets[wb.SheetNames[0]];
+
+                // https://github.com/sheetjs/sheetjs#utility-functions
                 const csv = XLSX.utils.sheet_to_csv(ws);
 
                 const lines = csv.split("\n");
@@ -94,6 +99,8 @@ const createCustomTextConverter = (callbacks = {}) => {
               fail(`Error: ${error.message}`);
             });
         } else {
+          // is standard text, or it could be some other file which is not a spreadsheet
+          // check arrayBuffer if it is a binary file or text file
           if (isBinary(arrayBuffer)) {
             fail(
               "Error: Detected non-text file (over 5% of first 512 bytes are control characters)",
@@ -101,13 +108,20 @@ const createCustomTextConverter = (callbacks = {}) => {
             return;
           }
 
+          // check max file size
+          // extremely large files may cause a crash
+          // react-dropzone may already check for this when dropping files, would have already aborted if size is too large
           if (arrayBuffer.byteLength >= config.maxFileSize) {
             const prettyMaxSize = prettyBytes(config.maxFileSize);
             fail(`Error: File is larger than ${prettyMaxSize}`);
             return;
           }
 
+          // convert ArrayBuffer to string
           const string = arrayBufferToString(arrayBuffer);
+
+          // check number of lines
+          // check number of lines, very large files can cause ReactDiffViewer to crash
           const lines = string.split("\n");
 
           if (lines.length > config.maxLines) {
@@ -115,6 +129,7 @@ const createCustomTextConverter = (callbacks = {}) => {
             return;
           }
 
+          // check length of lines, very long lines can cause ReactDiffViewer to crash
           const maxLineLength =
             lines.length === 0
               ? 0
@@ -126,6 +141,7 @@ const createCustomTextConverter = (callbacks = {}) => {
             return;
           }
 
+          // console.log(string);
           resolve(string);
           notifySuccess();
         }

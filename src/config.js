@@ -3,7 +3,7 @@ export default {
   maxFileSize: 1024 * 1024 * 10, // 10 MB
 
   // when reading lots of lines, it often causes ReactDiffViewer to crash
-  maxLines: 10000,
+  maxLines: 100000,
 
-  maxPermittedLineLength: 10000,
+  maxPermittedLineLength: 100000,
 };

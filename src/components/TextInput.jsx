@@ -321,47 +321,80 @@ const TextInput = ({ onUpdate, value, scrollRequest }) => {
     [],
   );
 
-  const scrollToLine = React.useCallback((rawLineNumber) => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
+  const scrollToLine = React.useCallback(
+    (rawLineNumber, { select = true } = {}) => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        return;
+      }
 
-    const totalLines = Math.max(1, textarea.value.split("\n").length);
-    const targetLine = Math.min(
-      totalLines,
-      Math.max(1, Math.floor(rawLineNumber)),
-    );
+      const lines = textarea.value.split("\n");
+      const totalLines = Math.max(1, lines.length);
+      const targetLine = Math.min(
+        totalLines,
+        Math.max(1, Math.floor(rawLineNumber)),
+      );
 
-    const computedStyles =
-      typeof window !== "undefined" ? window.getComputedStyle(textarea) : null;
+      const computedStyles =
+        typeof window !== "undefined"
+          ? window.getComputedStyle(textarea)
+          : null;
 
-    const rawLineHeight =
-      computedStyles && computedStyles.lineHeight
-        ? parseFloat(computedStyles.lineHeight)
-        : 0;
-    const rawFontSize =
-      computedStyles && computedStyles.fontSize
-        ? parseFloat(computedStyles.fontSize)
-        : 0;
+      const rawLineHeight =
+        computedStyles && computedStyles.lineHeight
+          ? parseFloat(computedStyles.lineHeight)
+          : 0;
+      const rawFontSize =
+        computedStyles && computedStyles.fontSize
+          ? parseFloat(computedStyles.fontSize)
+          : 0;
 
-    const lineHeight =
-      rawLineHeight > 0
-        ? rawLineHeight
-        : rawFontSize > 0
-        ? rawFontSize * 1.3
-        : 18;
+      const lineHeight =
+        rawLineHeight > 0
+          ? rawLineHeight
+          : rawFontSize > 0
+          ? rawFontSize * 1.3
+          : 18;
 
-    const containerHeight = Math.max(textarea.clientHeight, lineHeight);
-    const visibleLines = Math.max(
-      1,
-      Math.floor(containerHeight / (lineHeight || 1)),
-    );
-    const centerOffset = Math.floor(visibleLines / 2);
-    const scrollLine = Math.max(1, targetLine - centerOffset);
+      const lineTopOffset = (targetLine - 1) * lineHeight;
+      const centerOffsetPx = Math.max(
+        0,
+        textarea.clientHeight / 2 - lineHeight / 2,
+      );
+      const maxScrollTop = Math.max(
+        0,
+        textarea.scrollHeight - textarea.clientHeight,
+      );
+      const desiredScrollTop = Math.min(
+        maxScrollTop,
+        Math.max(0, lineTopOffset - centerOffsetPx),
+      );
+      textarea.scrollTop = desiredScrollTop;
 
-    textarea.scrollTop = Math.max(0, (scrollLine - 1) * lineHeight);
-  }, []);
+      if (select) {
+        const lineIndex = targetLine - 1;
+        const beforeLine = lines
+          .slice(0, lineIndex)
+          .reduce((acc, current) => acc + current.length + 1, 0);
+        const currentLine = lines[lineIndex] ?? "";
+        if (typeof textarea.setSelectionRange === "function") {
+          try {
+            textarea.focus({ preventScroll: true });
+          } catch {
+            textarea.focus();
+          }
+          textarea.setSelectionRange(
+            beforeLine,
+            beforeLine + currentLine.length,
+          );
+        } else {
+          textarea.focus();
+          textarea.select();
+        }
+      }
+    },
+    [],
+  );
 
   const customTextConverter = React.useMemo(
     () =>
@@ -378,11 +411,12 @@ const TextInput = ({ onUpdate, value, scrollRequest }) => {
 
   const scrollLineNumber = scrollRequest?.line ?? null;
   const scrollToken = scrollRequest?.token ?? 0;
+  const shouldSelectLine = scrollRequest?.select ?? true;
   React.useEffect(() => {
     if (typeof scrollLineNumber === "number") {
-      scrollToLine(scrollLineNumber);
+      scrollToLine(scrollLineNumber, { select: shouldSelectLine });
     }
-  }, [scrollToken, scrollLineNumber, scrollToLine]);
+  }, [scrollToken, scrollLineNumber, shouldSelectLine, scrollToLine]);
 
   return (
     <div className="textarea-wrapper">
@@ -453,6 +487,7 @@ TextInput.propTypes = {
   scrollRequest: PropTypes.shape({
     line: PropTypes.number,
     token: PropTypes.number.isRequired,
+    select: PropTypes.bool,
   }),
 };
 

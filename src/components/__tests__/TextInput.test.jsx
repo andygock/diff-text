@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import TextInput from "../TextInput";
 import config from "../../config";
@@ -48,13 +48,15 @@ describe("TextInput", () => {
     Object.assign(config, originalConfig);
   });
 
-  it("updates via onChange", () => {
+  it("updates via onChange", async () => {
     const onUpdate = vi.fn();
     render(<TextInput value="hello" onUpdate={onUpdate} />);
 
     const textarea = document.querySelector('[data-testid="dropzone"]');
     fireEvent.change(textarea, { target: { value: "next" } });
-    expect(onUpdate).toHaveBeenCalledWith("next");
+    await waitFor(() => {
+      expect(onUpdate).toHaveBeenCalledWith("next");
+    });
   });
 
   it("ignores non-string onDropRead values", () => {

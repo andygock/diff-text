@@ -26,14 +26,35 @@ const App = () => {
   const isDiffPending =
     deferredLeft !== inputLeft || deferredRight !== inputRight;
 
-  const queueScroll = React.useCallback((side, line) => {
-    setScrollRequests((previous) => ({
-      ...previous,
-      [side]: {
-        line,
-        token: previous[side].token + 1,
-      },
-    }));
+  const queueScroll = React.useCallback((updates) => {
+    if (!updates || Object.keys(updates).length === 0) {
+      return;
+    }
+    setScrollRequests((previous) => {
+      let didChange = false;
+      let next = { ...previous };
+      Object.entries(updates).forEach(([side, payload]) => {
+        if (side !== "left" && side !== "right") {
+          return;
+        }
+        const normalizedPayload =
+          payload && typeof payload === "object" ? payload : { line: payload };
+        const { line } = normalizedPayload;
+        if (line == null) {
+          return;
+        }
+        next = {
+          ...next,
+          [side]: {
+            ...normalizedPayload,
+            line,
+            token: previous[side].token + 1,
+          },
+        };
+        didChange = true;
+      });
+      return didChange ? next : previous;
+    });
   }, []);
 
   const handleLineNumberClick = React.useCallback(
@@ -41,7 +62,7 @@ const App = () => {
       if (!lineId || typeof lineId !== "string") {
         return;
       }
-      const match = /^([LR])-(\d+)$/.exec(lineId);
+      const match = /^([A-Za-z]+)-(\d+)$/.exec(lineId);
       if (!match) {
         return;
       }
@@ -52,13 +73,22 @@ const App = () => {
       }
       const contextLine = Math.max(1, lineNumber - 2);
 
-      if (prefix === "L") {
-        queueScroll("left", lineNumber);
-        queueScroll("right", contextLine);
-      } else {
-        queueScroll("right", lineNumber);
-        queueScroll("left", contextLine);
+      const normalizedPrefix =
+        prefix === "L"
+          ? "left"
+          : prefix === "R" || prefix === "undefined"
+          ? "right"
+          : null;
+      if (!normalizedPrefix) {
+        return;
       }
+      const primarySide = normalizedPrefix;
+      const secondarySide = primarySide === "left" ? "right" : "left";
+
+      queueScroll({
+        [primarySide]: { line: lineNumber, select: true },
+        [secondarySide]: { line: contextLine, select: false },
+      });
     },
     [queueScroll],
   );

@@ -6,7 +6,7 @@ import config from "../config";
 const getMaxLineLength = (str) =>
   Math.max(...str.split("\n").map((s) => s.length));
 
-const Diff = ({ left, right, options }) => {
+const Diff = ({ left, right, options, onLineNumberClick }) => {
   // check max line length, if longer than permitted chars chars - do not render ReactDiffViewer as it may crash
   const maxInputLines = Math.max(
     getMaxLineLength(left),
@@ -32,6 +32,7 @@ const Diff = ({ left, right, options }) => {
       oldValue={left}
       newValue={right}
       splitView={false}
+      onLineNumberClick={onLineNumberClick}
       {...options}
     />
   );
@@ -41,10 +42,12 @@ Diff.propTypes = {
   left: PropTypes.string.isRequired,
   right: PropTypes.string.isRequired,
   options: PropTypes.object,
+  onLineNumberClick: PropTypes.func,
 };
 
 Diff.defaultProps = {
   options: {},
+  onLineNumberClick: undefined,
 };
 
 export default Diff;

@@ -17,10 +17,51 @@ const App = () => {
     splitView: false,
     compareMethod: "diffChars",
   });
+  const [scrollRequests, setScrollRequests] = React.useState({
+    left: { line: null, token: 0 },
+    right: { line: null, token: 0 },
+  });
   const deferredLeft = React.useDeferredValue(inputLeft); // keep diff SPA responsive for large files
   const deferredRight = React.useDeferredValue(inputRight);
   const isDiffPending =
     deferredLeft !== inputLeft || deferredRight !== inputRight;
+
+  const queueScroll = React.useCallback((side, line) => {
+    setScrollRequests((previous) => ({
+      ...previous,
+      [side]: {
+        line,
+        token: previous[side].token + 1,
+      },
+    }));
+  }, []);
+
+  const handleLineNumberClick = React.useCallback(
+    (lineId) => {
+      if (!lineId || typeof lineId !== "string") {
+        return;
+      }
+      const match = /^([LR])-(\d+)$/.exec(lineId);
+      if (!match) {
+        return;
+      }
+      const [, prefix, lineText] = match;
+      const lineNumber = Number(lineText);
+      if (!Number.isFinite(lineNumber) || lineNumber <= 0) {
+        return;
+      }
+      const contextLine = Math.max(1, lineNumber - 2);
+
+      if (prefix === "L") {
+        queueScroll("left", lineNumber);
+        queueScroll("right", contextLine);
+      } else {
+        queueScroll("right", lineNumber);
+        queueScroll("left", contextLine);
+      }
+    },
+    [queueScroll],
+  );
 
   return (
     <div className={isDiffPending ? "app app-pending" : "app"}>
@@ -55,8 +96,16 @@ const App = () => {
       </div>
 
       <div className="grid-inputs">
-        <TextInput onUpdate={setInputLeft} value={inputLeft} />
-        <TextInput onUpdate={setInputRight} value={inputRight} />
+        <TextInput
+          onUpdate={setInputLeft}
+          value={inputLeft}
+          scrollRequest={scrollRequests.left}
+        />
+        <TextInput
+          onUpdate={setInputRight}
+          value={inputRight}
+          scrollRequest={scrollRequests.right}
+        />
       </div>
       <div className="output">
         {isDiffPending && (
@@ -64,7 +113,12 @@ const App = () => {
             Preparing diff...
           </div>
         )}
-        <Diff left={deferredLeft} right={deferredRight} options={options} />
+        <Diff
+          left={deferredLeft}
+          right={deferredRight}
+          options={options}
+          onLineNumberClick={handleLineNumberClick}
+        />
       </div>
 
       {/* list config limits, maxLines and maxFileSize permitted */}

@@ -230,7 +230,7 @@ const isSpreadsheetFile = (file) => {
 const arrayBufferToString = (arrayBuffer) =>
   new TextDecoder("utf-8").decode(arrayBuffer);
 
-const TextInput = ({ onUpdate, value }) => {
+const TextInput = ({ onUpdate, value, scrollRequest }) => {
   const [isDragging, setIsDragging] = React.useState(false);
   const [dropStatus, setDropStatus] = React.useState({
     active: false,
@@ -241,6 +241,7 @@ const TextInput = ({ onUpdate, value }) => {
   const progressIntervalRef = React.useRef(null);
   const hideTimeoutRef = React.useRef(null);
   const debounceTimeoutRef = React.useRef(null);
+  const textareaRef = React.useRef(null);
 
   const DEBOUNCE_DELAY = 500; // ms of inactivity before processing text input
 
@@ -320,6 +321,48 @@ const TextInput = ({ onUpdate, value }) => {
     [],
   );
 
+  const scrollToLine = React.useCallback((rawLineNumber) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const totalLines = Math.max(1, textarea.value.split("\n").length);
+    const targetLine = Math.min(
+      totalLines,
+      Math.max(1, Math.floor(rawLineNumber)),
+    );
+
+    const computedStyles =
+      typeof window !== "undefined" ? window.getComputedStyle(textarea) : null;
+
+    const rawLineHeight =
+      computedStyles && computedStyles.lineHeight
+        ? parseFloat(computedStyles.lineHeight)
+        : 0;
+    const rawFontSize =
+      computedStyles && computedStyles.fontSize
+        ? parseFloat(computedStyles.fontSize)
+        : 0;
+
+    const lineHeight =
+      rawLineHeight > 0
+        ? rawLineHeight
+        : rawFontSize > 0
+        ? rawFontSize * 1.3
+        : 18;
+
+    const containerHeight = Math.max(textarea.clientHeight, lineHeight);
+    const visibleLines = Math.max(
+      1,
+      Math.floor(containerHeight / (lineHeight || 1)),
+    );
+    const centerOffset = Math.floor(visibleLines / 2);
+    const scrollLine = Math.max(1, targetLine - centerOffset);
+
+    textarea.scrollTop = Math.max(0, (scrollLine - 1) * lineHeight);
+  }, []);
+
   const customTextConverter = React.useMemo(
     () =>
       // eslint-disable-next-line react-hooks/refs
@@ -332,6 +375,14 @@ const TextInput = ({ onUpdate, value }) => {
   );
 
   // https://react-dropzone.js.org/
+
+  const scrollLineNumber = scrollRequest?.line ?? null;
+  const scrollToken = scrollRequest?.token ?? 0;
+  React.useEffect(() => {
+    if (typeof scrollLineNumber === "number") {
+      scrollToLine(scrollLineNumber);
+    }
+  }, [scrollToken, scrollLineNumber, scrollToLine]);
 
   return (
     <div className="textarea-wrapper">
@@ -346,6 +397,7 @@ const TextInput = ({ onUpdate, value }) => {
         textareaProps={{
           className: classNames("textarea", { dragging: isDragging }),
           rows: 25,
+          ref: textareaRef,
         }}
         onDropRead={(text) => {
           setIsDragging(false);
@@ -398,8 +450,14 @@ const TextInput = ({ onUpdate, value }) => {
 TextInput.propTypes = {
   onUpdate: PropTypes.func.isRequired,
   value: PropTypes.string.isRequired,
+  scrollRequest: PropTypes.shape({
+    line: PropTypes.number,
+    token: PropTypes.number.isRequired,
+  }),
 };
 
-TextInput.defaultProps = {};
+TextInput.defaultProps = {
+  scrollRequest: undefined,
+};
 
 export default TextInput;

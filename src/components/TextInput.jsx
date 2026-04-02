@@ -55,7 +55,9 @@ const createCustomTextConverter = (callbacks = {}) => {
           // If Worker is not available (tests / Node environment), fall back to main-thread parsing
           if (typeof Worker === "undefined") {
             import("xlsx")
-              .then((XLSX) => {
+              .then((mod) => {
+                // Normalize possible interop shape (some bundlers expose the package on .default)
+                const XLSX = mod?.default || mod;
                 try {
                   const wb = XLSX.read(arrayBuffer, { type: "array" });
 

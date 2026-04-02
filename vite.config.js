@@ -10,8 +10,13 @@ export default defineConfig({
       path: "path-browserify",
     },
   },
-  define: {
-    global: {},
+  // Note: removed broad `define.global` substitution because it can pull in
+  // unexpected polyfills/shims and expand the attack surface. Add targeted
+  // polyfills only when a specific global is required.
+  // Ensure worker output uses ES modules so Rollup can perform code-splitting
+  // without attempting to emit an IIFE/UMD worker bundle.
+  worker: {
+    format: "es",
   },
   test: {
     environment: "jsdom",

@@ -78,7 +78,7 @@ describe("App", () => {
   });
 
   it("handleLineNumberClick parses only L/R prefixes and ignores others", async () => {
-    const { getByTestId, getAllByTestId } = render(<App />);
+    const { getAllByTestId } = render(<App />);
 
     // click a valid left-line button, expect left scrollRequest to update
     const diffOutputs = getAllByTestId("diff-output");

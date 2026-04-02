@@ -51,9 +51,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
               name="compareMethod"
               value={data.method}
               checked={options?.compareMethod === data.method}
-              onChange={() => {
-                onChange({ ...options, compareMethod: data.method });
-              }}
+              onChange={() => onChange({ compareMethod: data.method })}
             />
             <label htmlFor={`compareMethod${index}`} className="radio-button">
               {useShortButtons ? data.text : data.tooltip}
@@ -68,9 +66,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
           name="viewType"
           value="unified"
           checked={!options?.splitView}
-          onChange={() => {
-            onChange({ ...options, splitView: false });
-          }}
+          onChange={() => onChange({ splitView: false })}
         />
         <label htmlFor="viewTypeUnified" className="radio-button">
           Unified
@@ -82,9 +78,7 @@ const DiffViewerOptions = ({ options, onChange }) => {
           name="viewType"
           value="split"
           checked={options?.splitView}
-          onChange={() => {
-            onChange({ ...options, splitView: true });
-          }}
+          onChange={() => onChange({ splitView: true })}
         />
         <label htmlFor="viewTypeSplit" className="radio-button">
           Split

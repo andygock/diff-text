@@ -25,6 +25,15 @@ class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      const showDetails =
+        (typeof import.meta !== "undefined" &&
+          import.meta.env &&
+          import.meta.env.DEV) ||
+        (typeof globalThis !== "undefined" &&
+          globalThis.process &&
+          globalThis.process.env &&
+          globalThis.process.env.NODE_ENV !== "production");
+
       return (
         <div className="error-boundary" role="alert">
           <h2>Something went wrong</h2>
@@ -32,11 +41,17 @@ class ErrorBoundary extends React.Component {
             <button onClick={() => this.reset()}>Try again</button>
             <button onClick={() => window.location.reload()}>Reload</button>
           </div>
-          <details style={{ whiteSpace: "pre-wrap", marginTop: "1rem" }}>
-            {this.state.error && this.state.error.toString()}
-            <br />
-            {this.state.info?.componentStack}
-          </details>
+          {showDetails ? (
+            <details style={{ whiteSpace: "pre-wrap", marginTop: "1rem" }}>
+              {this.state.error && this.state.error.toString()}
+              <br />
+              {this.state.info?.componentStack}
+            </details>
+          ) : (
+            <p style={{ marginTop: "1rem" }}>
+              An unexpected error occurred. Details are hidden in production.
+            </p>
+          )}
         </div>
       );
     }

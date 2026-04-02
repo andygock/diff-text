@@ -80,65 +80,87 @@ self.addEventListener("message", async (event) => {
         progress: 5,
         message: "Loading spreadsheet parser",
       });
-      const XLSX = await import("xlsx");
-      self.postMessage({
-        id,
-        type: "progress",
-        progress: 35,
-        message: "Parsing spreadsheet",
-      });
-
-      const wb = XLSX.read(arrayBuffer, { type: "array" });
-      if (!wb.SheetNames || wb.SheetNames.length === 0) {
+      let XLSX;
+      try {
+        const mod = await import("xlsx");
+        XLSX = mod?.default || mod;
+      } catch (err) {
         self.postMessage({
           id,
           type: "error",
-          message: "Spreadsheet has no worksheets",
+          message: `Failed to load spreadsheet parser: ${err?.message || String(err)}`,
         });
         return;
       }
+      try {
+        self.postMessage({
+          id,
+          type: "progress",
+          progress: 35,
+          message: "Parsing spreadsheet",
+        });
 
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      self.postMessage({
-        id,
-        type: "progress",
-        progress: 65,
-        message: "Converting sheet to CSV",
-      });
-      const csv = XLSX.utils.sheet_to_csv(ws);
+        const wb = XLSX.read(arrayBuffer, { type: "array" });
+        if (!wb.SheetNames || wb.SheetNames.length === 0) {
+          self.postMessage({
+            id,
+            type: "error",
+            message: "Spreadsheet has no worksheets",
+          });
+          return;
+        }
 
-      // trim trailing empty lines
-      const lines = csv.split("\n");
-      while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        self.postMessage({
+          id,
+          type: "progress",
+          progress: 65,
+          message: "Converting sheet to CSV",
+        });
+        const csv = XLSX.utils.sheet_to_csv(ws);
 
-      if (lines.length > config.maxLines) {
+        // trim trailing empty lines
+        const lines = csv.split("\n");
+        while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+
+        if (lines.length > config.maxLines) {
+          self.postMessage({
+            id,
+            type: "error",
+            message: `Exceeded maximum ${config.maxLines} spreadsheet lines (found ${lines.length})`,
+          });
+          return;
+        }
+
+        const maxLineLength =
+          lines.length === 0
+            ? 0
+            : Math.max(...lines.map((line) => line.length));
+        if (maxLineLength > config.maxPermittedLineLength) {
+          self.postMessage({
+            id,
+            type: "error",
+            message: `Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
+          });
+          return;
+        }
+
+        self.postMessage({
+          id,
+          type: "progress",
+          progress: 100,
+          message: "Done",
+        });
+        self.postMessage({ id, type: "result", result: csv });
+        return;
+      } catch (err) {
         self.postMessage({
           id,
           type: "error",
-          message: `Exceeded maximum ${config.maxLines} spreadsheet lines (found ${lines.length})`,
+          message: `Spreadsheet parse failed: ${err?.message || String(err)}`,
         });
         return;
       }
-
-      const maxLineLength =
-        lines.length === 0 ? 0 : Math.max(...lines.map((line) => line.length));
-      if (maxLineLength > config.maxPermittedLineLength) {
-        self.postMessage({
-          id,
-          type: "error",
-          message: `Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
-        });
-        return;
-      }
-
-      self.postMessage({
-        id,
-        type: "progress",
-        progress: 100,
-        message: "Done",
-      });
-      self.postMessage({ id, type: "result", result: csv });
-      return;
     }
 
     // treat as text

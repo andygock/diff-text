@@ -134,6 +134,9 @@ const createCustomTextConverter = (callbacks = {}) => {
               };
 
               worker.addEventListener("message", msgHandler);
+              // arrayBuffer is not used after this point on the main thread,
+              // so it's safe to transfer to the worker which avoids copying large buffers.
+              // If the main thread must keep a copy, send `arrayBuffer.slice()` instead.
               // transfer the ArrayBuffer to the worker to avoid copying large buffers
               worker.postMessage(
                 {

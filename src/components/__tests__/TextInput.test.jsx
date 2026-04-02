@@ -26,12 +26,12 @@ vi.mock("../../library/toaster", () => ({
   showMessage: vi.fn(),
 }));
 
-vi.mock("xlsx", () => ({
-  read: vi.fn(),
-  utils: {
-    sheet_to_csv: vi.fn(),
-  },
-}));
+vi.mock("xlsx", () => {
+  const read = vi.fn();
+  const utils = { sheet_to_csv: vi.fn() };
+  const mod = { read, utils };
+  return { default: mod, ...mod };
+});
 
 const toArrayBuffer = (text) => new TextEncoder().encode(text).buffer;
 
@@ -197,5 +197,25 @@ describe("TextInput", () => {
     );
     expect(result).toBeNull();
     expect(showError).toHaveBeenCalled();
+  });
+
+  it("handles malformed scroll requests without throwing", () => {
+    // ensure NaN or non-finite values don't cause exceptions
+    render(
+      <TextInput
+        value="a\nb\nc"
+        onUpdate={() => {}}
+        scrollRequest={{ line: NaN, token: 1 }}
+      />,
+    );
+
+    // also try string line (should be ignored by effect since not a number)
+    render(
+      <TextInput
+        value="a\nb\nc"
+        onUpdate={() => {}}
+        scrollRequest={{ line: "3", token: 2 }}
+      />,
+    );
   });
 });

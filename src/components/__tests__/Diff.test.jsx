@@ -42,7 +42,7 @@ describe("Diff", () => {
   });
 
   it("renders the diff viewer with provided options", () => {
-    render(
+    const { getAllByTestId } = render(
       <Diff
         left={"a"}
         right={"b"}
@@ -50,10 +50,28 @@ describe("Diff", () => {
       />,
     );
 
-    const viewer = screen.getByTestId("diff-viewer");
+    const viewers = getAllByTestId("diff-viewer");
+    const viewer = viewers[0];
     expect(viewer.dataset.old).toBe("a");
     expect(viewer.dataset.new).toBe("b");
     expect(viewer.dataset.split).toBe("true");
     expect(viewer.dataset.compare).toBe("diffWords");
+  });
+
+  it("does not allow options to override critical props", () => {
+    const { getAllByTestId } = render(
+      <Diff
+        left={"a"}
+        right={"b"}
+        options={{ splitView: true, compareMethod: "diffWords", oldValue: "x" }}
+      />,
+    );
+
+    const viewers = getAllByTestId("diff-viewer");
+    const viewer = viewers[0];
+    // old value must come from left prop, not from options
+    expect(viewer.dataset.old).toBe("a");
+    expect(viewer.dataset.split).toBe("true");
+    expect(viewer.dataset.old).not.toBe("x");
   });
 });

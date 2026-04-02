@@ -364,19 +364,23 @@ const TextInput = ({ onUpdate, value, scrollRequest }) => {
       if (!textarea) {
         return;
       }
+      // normalize numeric input and bail on non-finite values
+      const num =
+        typeof rawLineNumber === "number"
+          ? rawLineNumber
+          : Number(rawLineNumber);
+      if (!Number.isFinite(num)) {
+        return;
+      }
 
-      const lines = textarea.value.split("\n");
+      const lines = String(textarea.value || "").split("\n");
       const totalLines = Math.max(1, lines.length);
-      const targetLine = Math.min(
-        totalLines,
-        Math.max(1, Math.floor(rawLineNumber)),
-      );
+      const targetLine = Math.min(totalLines, Math.max(1, Math.floor(num)));
 
       const computedStyles =
         typeof window !== "undefined"
           ? window.getComputedStyle(textarea)
           : null;
-
       const rawLineHeight =
         computedStyles && computedStyles.lineHeight
           ? parseFloat(computedStyles.lineHeight)
@@ -386,12 +390,19 @@ const TextInput = ({ onUpdate, value, scrollRequest }) => {
           ? parseFloat(computedStyles.fontSize)
           : 0;
 
+      // prefer computed line-height; fallback to average line height measured from scrollHeight
+      const averageLineHeight =
+        textarea.scrollHeight && totalLines > 0
+          ? textarea.scrollHeight / totalLines
+          : 0;
       const lineHeight =
         rawLineHeight > 0
           ? rawLineHeight
           : rawFontSize > 0
             ? rawFontSize * 1.3
-            : 18;
+            : averageLineHeight > 0
+              ? averageLineHeight
+              : 18;
 
       const lineTopOffset = (targetLine - 1) * lineHeight;
       const centerOffsetPx = Math.max(
@@ -406,7 +417,9 @@ const TextInput = ({ onUpdate, value, scrollRequest }) => {
         maxScrollTop,
         Math.max(0, lineTopOffset - centerOffsetPx),
       );
-      textarea.scrollTop = desiredScrollTop;
+      textarea.scrollTop = Number.isFinite(desiredScrollTop)
+        ? desiredScrollTop
+        : 0;
 
       if (select) {
         const lineIndex = targetLine - 1;

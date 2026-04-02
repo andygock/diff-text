@@ -59,26 +59,24 @@ const App = () => {
 
   const handleLineNumberClick = React.useCallback(
     (lineId) => {
+      // accept only explicit L- or R- prefixes (case-insensitive)
       if (!lineId || typeof lineId !== "string") {
         return;
       }
-      const match = /^([A-Za-z]+)-(\d+)$/.exec(lineId);
+      const match = /^([LR])-(\d+)$/i.exec(lineId);
       if (!match) {
         return;
       }
       const [, prefix, lineText] = match;
       const lineNumber = Number(lineText);
-      if (!Number.isFinite(lineNumber) || lineNumber <= 0) {
+      if (!Number.isInteger(lineNumber) || lineNumber <= 0) {
         return;
       }
       const contextLine = Math.max(1, lineNumber - 2);
 
+      const up = prefix.toUpperCase();
       const normalizedPrefix =
-        prefix === "L"
-          ? "left"
-          : prefix === "R" || prefix === "undefined"
-          ? "right"
-          : null;
+        up === "L" ? "left" : up === "R" ? "right" : null;
       if (!normalizedPrefix) {
         return;
       }

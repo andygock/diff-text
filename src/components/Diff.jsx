@@ -3,14 +3,19 @@ import React from "react";
 import ReactDiffViewer from "react-diff-viewer-continued";
 import config from "../config";
 
-const getMaxLineLength = (str) =>
-  Math.max(...str.split("\n").map((s) => s.length));
+const getMaxLineLength = (input) => {
+  const s = String(input || "");
+  const parts = s.split("\n");
+  return Math.max(...parts.map((p) => p.length));
+};
 
 const Diff = ({ left, right, options, onLineNumberClick }) => {
-  // check max line length, if longer than permitted chars chars - do not render ReactDiffViewer as it may crash
+  // check max line length, coerce inputs to strings to avoid exceptions
+  const safeLeft = String(left || "");
+  const safeRight = String(right || "");
   const maxInputLines = Math.max(
-    getMaxLineLength(left),
-    getMaxLineLength(right),
+    getMaxLineLength(safeLeft),
+    getMaxLineLength(safeRight),
   );
 
   if (maxInputLines > config.maxPermittedLineLength) {
@@ -22,18 +27,31 @@ const Diff = ({ left, right, options, onLineNumberClick }) => {
     );
   }
 
-  if (left === right) {
+  if (safeLeft === safeRight) {
     // content is identical
     return <p className="identical">Content is identical</p>;
   }
 
+  // Whitelist allowed option props instead of spreading user-controlled options
+  const allowedOptions =
+    options && typeof options === "object"
+      ? {
+          splitView: options.splitView,
+          compareMethod: options.compareMethod,
+          showDiffOnly: options.showDiffOnly,
+          hideLineNumbers: options.hideLineNumbers,
+          leftTitle: options.leftTitle,
+          rightTitle: options.rightTitle,
+        }
+      : {};
+
   return (
     <ReactDiffViewer
-      oldValue={left}
-      newValue={right}
+      oldValue={safeLeft}
+      newValue={safeRight}
       splitView={false}
       onLineNumberClick={onLineNumberClick}
-      {...options}
+      {...allowedOptions}
     />
   );
 };

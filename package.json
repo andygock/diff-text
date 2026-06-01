@@ -41,6 +41,6 @@
     "jsdom": "^27.4.0",
     "path-browserify": "^1.0.1",
     "vite": "^7.3.0",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.0"
   }
 }

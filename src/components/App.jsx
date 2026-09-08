@@ -96,7 +96,7 @@ export default function App() {
         <header className="app-header">
           <div className="brand">
             <span className="brand-mark" aria-hidden="true">
-              <img src="/diff.svg" alt="" />
+              <img src="./diff.svg" alt="" />
             </span>
             <h1>
               diff<span className="muted">text</span>

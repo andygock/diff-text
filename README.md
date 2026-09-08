@@ -7,6 +7,8 @@ with the app; there are no font CDN or document-upload requests.
 The interface uses neutral, shadcn-style controls, labelled editors, visible
 keyboard focus and a virtualised unified or split comparison view.
 
+![diff-text comparison view](screenshots/screenshot.png)
+
 ## Development
 
 Use pnpm exclusively. Keep the configured minimum release age in place when

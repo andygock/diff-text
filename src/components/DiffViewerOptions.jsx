@@ -13,6 +13,8 @@ export default function DiffViewerOptions({
   onChange,
   splitView,
   onViewChange,
+  wrapOutput = false,
+  onWrapChange = () => {},
 }) {
   return (
     <div className="comparison-options">
@@ -58,6 +60,14 @@ export default function DiffViewerOptions({
           Split
         </button>
       </div>
+      <label className="check-label">
+        <input
+          type="checkbox"
+          checked={wrapOutput}
+          onChange={(event) => onWrapChange(event.target.checked)}
+        />
+        Wrap output
+      </label>
     </div>
   );
 }

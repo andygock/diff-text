@@ -44,4 +44,18 @@ describe("DiffViewerOptions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Unified" }));
     expect(onViewChange).toHaveBeenCalledWith(false);
   });
+  it("toggles output wrapping independently of the comparison", () => {
+    const onWrapChange = vi.fn();
+    render(
+      <DiffViewerOptions
+        options={options}
+        onChange={vi.fn()}
+        splitView
+        onViewChange={vi.fn()}
+        onWrapChange={onWrapChange}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Wrap output"));
+    expect(onWrapChange).toHaveBeenCalledWith(true);
+  });
 });

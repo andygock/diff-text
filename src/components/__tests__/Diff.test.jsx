@@ -59,6 +59,19 @@ describe("Diff", () => {
       screen.getByRole("button", { name: "Go to original line 1" }),
     ).toBeDisabled();
   });
+  it("wraps output rows when requested", () => {
+    render(
+      <Diff
+        result={compareText("a".repeat(300), "b".repeat(300))}
+        splitView
+        wrapOutput
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("region", { name: "Comparison results" }),
+    ).toHaveClass("wrap-output");
+  });
   it("navigates to changes beyond the virtualised viewport", () => {
     const same = Array.from({ length: 1000 }, (_, i) => i + "\n").join("");
     render(

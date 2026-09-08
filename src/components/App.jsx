@@ -27,7 +27,8 @@ export default function App() {
     ignoreWhitespace: false,
     ignoreLineEndings: false,
   });
-  const [splitView, setSplitView] = useState(true);
+  const [splitView, setSplitView] = useState(false);
+  const [wrapOutput, setWrapOutput] = useState(true);
   const [manual, setManual] = useState(false);
   const leftEditor = useRef(null);
   const rightEditor = useRef(null);
@@ -91,128 +92,133 @@ export default function App() {
         }
       }}
     >
-      <header className="app-header">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <img src="/diff.svg" alt="" />
-          </span>
-          <h1>
-            diff<span className="muted">text</span>
-          </h1>
-          <span className="header-divider" />
-          <span className="tagline">
-            {" "}
-            Compare two portions of text in the browser. Supports text and{" "}
-            <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
-              common spreadsheet files{" "}
-            </a>
-            .
-          </span>
+      <div className="app-content">
+        <header className="app-header">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden="true">
+              <img src="/diff.svg" alt="" />
+            </span>
+            <h1>
+              diff<span className="muted">text</span>
+            </h1>
+            <span className="header-divider" />
+            <span className="tagline">
+              {" "}
+              Compare two portions of text in the browser. Supports text and{" "}
+              <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
+                common spreadsheet files{" "}
+              </a>
+              .
+            </span>
+          </div>
+          <button onClick={swap} aria-label="Swap original and modified">
+            <span aria-hidden="true">⇄</span> Swap sides
+          </button>
+        </header>
+        <div className="editors">
+          <TextInput
+            ref={leftEditor}
+            side="left"
+            document={documents.left}
+            onUpdate={updateLeft}
+          />
+          <TextInput
+            ref={rightEditor}
+            side="right"
+            document={documents.right}
+            onUpdate={updateRight}
+          />
         </div>
-        <button onClick={swap} aria-label="Swap original and modified">
-          <span aria-hidden="true">⇄</span> Swap sides
-        </button>
-      </header>
-      <div className="editors">
-        <TextInput
-          ref={leftEditor}
-          side="left"
-          document={documents.left}
-          onUpdate={updateLeft}
-        />
-        <TextInput
-          ref={rightEditor}
-          side="right"
-          document={documents.right}
-          onUpdate={updateRight}
-        />
-      </div>
-      <div className="toolbar panel">
-        <DiffViewerOptions
-          options={options}
-          onChange={updateOptions}
-          splitView={splitView}
-          onViewChange={setSplitView}
-        />
-        <div className="toolbar-actions">
-          <label className="check-label">
-            <input
-              type="checkbox"
-              checked={manual}
-              onChange={(event) => setManual(event.target.checked)}
-            />
-            Manual
-          </label>
+        <div className="toolbar panel">
+          <DiffViewerOptions
+            options={options}
+            onChange={updateOptions}
+            splitView={splitView}
+            onViewChange={setSplitView}
+            wrapOutput={wrapOutput}
+            onWrapChange={setWrapOutput}
+          />
+          <div className="toolbar-actions">
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={manual}
+                onChange={(event) => setManual(event.target.checked)}
+              />
+              Manual
+            </label>
+            {working ? (
+              <button onClick={comparison.cancel}>Cancel</button>
+            ) : (
+              <button
+                className="primary"
+                title="Compare (Ctrl/⌘ + Enter)"
+                onClick={comparison.compare}
+              >
+                Compare <span aria-hidden="true">↵</span>
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="comparison-status" role="status">
           {working ? (
-            <button onClick={comparison.cancel}>Cancel</button>
+            <>
+              <span className="spinner" />
+              Comparing…
+            </>
+          ) : comparison.status === "cancelled" ? (
+            "Comparison cancelled. Select Compare to resume."
+          ) : comparison.error ? (
+            "Comparison failed. Adjust the input or select Compare to retry."
+          ) : comparison.stale ? (
+            comparison.large ? (
+              "Large-file mode · select Compare to update the result."
+            ) : manual ? (
+              "Edits ready · select Compare to update the result."
+            ) : (
+              "Text changed · preparing comparison…"
+            )
           ) : (
-            <button
-              className="primary"
-              title="Compare (Ctrl/⌘ + Enter)"
-              onClick={comparison.compare}
-            >
-              Compare <span aria-hidden="true">↵</span>
-            </button>
+            "Comparison up to date"
+          )}
+          {comparison.stale && comparison.result && (
+            <span className="badge">Previous result</span>
           )}
         </div>
-      </div>
-      <div className="comparison-status" role="status">
-        {working ? (
-          <>
-            <span className="spinner" />
-            Comparing…
-          </>
-        ) : comparison.status === "cancelled" ? (
-          "Comparison cancelled. Select Compare to resume."
-        ) : comparison.error ? (
-          "Comparison failed. Adjust the input or select Compare to retry."
-        ) : comparison.stale ? (
-          comparison.large ? (
-            "Large-file mode · select Compare to update the result."
-          ) : manual ? (
-            "Edits ready · select Compare to update the result."
-          ) : (
-            "Text changed · preparing comparison…"
-          )
-        ) : (
-          "Comparison up to date"
+        {comparison.error && (
+          <div className="inline-error" role="alert">
+            {comparison.error} Your text is still available above.
+          </div>
         )}
-        {comparison.stale && comparison.result && (
-          <span className="badge">Previous result</span>
-        )}
+        <section className="results panel" aria-label="Diff">
+          <ErrorBoundary key={comparison.signature}>
+            {comparison.result ? (
+              <Diff
+                key={comparison.signature}
+                result={comparison.result}
+                splitView={splitView}
+                wrapOutput={wrapOutput}
+                stale={comparison.stale}
+                onNavigate={navigate}
+              />
+            ) : (
+              <div className="empty-result">
+                <span className="empty-symbol" aria-hidden="true">
+                  ≠
+                </span>
+                <strong>Your comparison will appear here</strong>
+                <p>
+                  {comparison.error || comparison.status === "cancelled"
+                    ? "Your editors are ready when you are."
+                    : comparison.large || manual
+                      ? "Select Compare when you are ready."
+                      : "Preparing your text…"}
+                </p>
+              </div>
+            )}
+          </ErrorBoundary>
+        </section>
       </div>
-      {comparison.error && (
-        <div className="inline-error" role="alert">
-          {comparison.error} Your text is still available above.
-        </div>
-      )}
-      <section className="results panel" aria-label="Diff">
-        <ErrorBoundary key={comparison.signature}>
-          {comparison.result ? (
-            <Diff
-              key={comparison.signature}
-              result={comparison.result}
-              splitView={splitView}
-              stale={comparison.stale}
-              onNavigate={navigate}
-            />
-          ) : (
-            <div className="empty-result">
-              <span className="empty-symbol" aria-hidden="true">
-                ≠
-              </span>
-              <strong>Your comparison will appear here</strong>
-              <p>
-                {comparison.error || comparison.status === "cancelled"
-                  ? "Your editors are ready when you are."
-                  : comparison.large || manual
-                    ? "Select Compare when you are ready."
-                    : "Preparing your text…"}
-              </p>
-            </div>
-          )}
-        </ErrorBoundary>
-      </section>
       <div className="app-footer">
         <span>
           10 MiB per input · 100,000 lines · 100,000 characters per line

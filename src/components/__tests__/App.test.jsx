@@ -24,8 +24,14 @@ describe("App", () => {
   it("does not recompute when changing only the layout", async () => {
     render(<App />);
     await advance();
+    expect(screen.getByRole("button", { name: "Unified" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByLabelText("Wrap output")).toBeChecked();
     const calls = startJob.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "Unified" }));
+    fireEvent.click(screen.getByLabelText("Wrap output"));
     await advance();
     expect(startJob.mock.calls.length).toBe(calls);
   });

@@ -33,6 +33,7 @@
   --code-leading: 18px;
   --code-row: 18px;
   --code-number-width: 50px;
+  --editor-leading: 15px;
 }
 * {
   box-sizing: border-box;
@@ -128,7 +129,16 @@ textarea {
 .app {
   max-width: 1920px;
   margin: auto;
-  padding: 0 18px 12px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 0 18px;
+}
+.app-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: 34px;
 }
 .app-header {
   display: flex;
@@ -192,6 +202,12 @@ h2 {
   overflow: hidden;
   box-shadow: 0 1px 2px #00000003;
 }
+.results {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
 .editors {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -251,13 +267,14 @@ h2 {
   border: 0;
   border-radius: 0;
   width: 100%;
-  height: 185px;
+  /* Match the old editor's 25-row workspace without making small screens unwieldy. */
+  height: clamp(220px, 29vh, 342px);
   min-height: 96px;
   max-height: 60vh;
   resize: vertical;
-  padding: 8px 10px;
+  padding: 6px 10px;
   font-size: var(--code-size);
-  line-height: var(--code-leading);
+  line-height: var(--editor-leading);
   tab-size: 4;
   color: #3f3f46;
   background: transparent;
@@ -442,7 +459,9 @@ h2 {
   font-size: 11px;
 }
 .diff-viewport {
-  height: clamp(240px, 53vh, 680px);
+  flex: 1 1 auto;
+  min-height: 160px;
+  height: auto;
   overflow: auto;
   position: relative;
   scrollbar-gutter: stable;
@@ -527,6 +546,24 @@ h2 {
   white-space: pre;
   padding: 0 4px;
   tab-size: 4;
+}
+.wrap-output .diff-cell {
+  height: 100%;
+  align-items: flex-start;
+}
+.wrap-output .line-number {
+  height: 100%;
+}
+.wrap-output .line-content {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.wrap-output .line-overflow,
+.wrap-output .context-gap {
+  white-space: normal;
 }
 .word-change {
   border-radius: 2px;
@@ -619,10 +656,18 @@ h2 {
   margin-right: 8px;
 }
 .app-footer {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 10;
+  width: min(calc(100% - 36px), 1884px);
+  transform: translateX(-50%);
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  margin-top: 8px;
+  padding: 5px 0 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
   color: var(--muted);
   font-size: 9px;
 }
@@ -639,7 +684,10 @@ h2 {
 }
 @media (max-width: 1100px) {
   .app {
-    padding: 0 12px 10px;
+    padding: 0 12px;
+  }
+  .app-footer {
+    width: calc(100% - 24px);
   }
   .filename {
     max-width: 110px;
@@ -654,7 +702,10 @@ h2 {
 }
 @media (max-width: 720px) {
   .app {
-    padding: 0 7px 8px;
+    padding: 0 7px;
+  }
+  .app-footer {
+    width: calc(100% - 14px);
   }
   .app-header {
     height: 43px;
@@ -664,7 +715,7 @@ h2 {
     gap: 7px;
   }
   .textarea {
-    height: 150px;
+    height: 220px;
   }
   .filename {
     max-width: 120px;

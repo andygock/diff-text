@@ -8,6 +8,9 @@ import React, {
 import { startJob } from "../library/jobs";
 import config from "../config";
 
+// Keep this in sync with App.css so line navigation remains centred accurately.
+const EDITOR_LINE_HEIGHT = 15;
+
 const TextInput = forwardRef(function TextInput(
   { side, document, onUpdate },
   ref,
@@ -70,7 +73,9 @@ const TextInput = forwardRef(function TextInput(
         }
         element.scrollTop = Math.max(
           0,
-          (current - 1) * 20 - element.clientHeight / 2 + 10,
+          (current - 1) * EDITOR_LINE_HEIGHT -
+            element.clientHeight / 2 +
+            EDITOR_LINE_HEIGHT / 2,
         );
       });
     },

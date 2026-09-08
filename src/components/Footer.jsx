@@ -8,14 +8,26 @@ const Footer = () => {
     return (
       <div className="footer">
         &copy; <a href="https://gock.net/">Andy Gock</a> /{" "}
-        <a href="https://github.com/andygock/diff-text">GitHub</a>
+        <a
+          href="https://github.com/andygock/diff-text"
+          rel="noreferrer"
+          target="_blank"
+        >
+          GitHub
+        </a>
       </div>
     );
   }
 
   return (
     <div className="footer">
-      <a href="https://github.com/andygock/diff-text">GitHub</a>
+      <a
+        href="https://github.com/andygock/diff-text"
+        rel="noreferrer"
+        target="_blank"
+      >
+        GitHub
+      </a>
     </div>
   );
 };

@@ -105,7 +105,11 @@ export default function App() {
             <span className="tagline">
               {" "}
               Compare two portions of text in the browser. Supports text and{" "}
-              <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
+              <a
+                href="https://docs.sheetjs.com/docs/#supported-file-formats"
+                rel="noreferrer"
+                target="_blank"
+              >
                 common spreadsheet files{" "}
               </a>
               .

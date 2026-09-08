@@ -262,6 +262,44 @@ h2 {
   align-items: center;
   gap: 6px;
 }
+.tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+.tooltip {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 20;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 24px));
+  padding: 7px 9px;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  color: #fafafa;
+  background: #27272a;
+  box-shadow: 0 4px 12px #00000020;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-3px);
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0s linear 0.15s;
+}
+.tooltip-anchor:hover .tooltip,
+.tooltip-anchor:focus-within .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition-delay: 0s;
+}
 .textarea {
   display: block;
   border: 0;
@@ -750,6 +788,9 @@ h2 {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    transition: none;
+  }
   .spinner {
     animation: none;
   }

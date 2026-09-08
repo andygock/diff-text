@@ -160,13 +160,23 @@ const TextInput = forwardRef(function TextInput(
           >
             Wrap
           </button>
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => picker.current.click()}
-          >
-            Open file
-          </button>
+          <span className="tooltip-anchor">
+            <button
+              type="button"
+              className="ghost"
+              aria-describedby={side + "-open-file-help"}
+              onClick={() => picker.current.click()}
+            >
+              Open file
+            </button>
+            <span
+              id={side + "-open-file-help"}
+              className="tooltip"
+              role="tooltip"
+            >
+              Choose a file, or drag and drop one into this editor.
+            </span>
+          </span>
           <button
             type="button"
             className="ghost"

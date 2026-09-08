@@ -33,6 +33,16 @@ describe("TextInput", () => {
       expect.objectContaining({ text: "latest" }),
     );
   });
+  it("explains that files can also be dragged into the editor", () => {
+    render(<TextInput side="left" document={document} onUpdate={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Open file" });
+    const tooltip = screen.getByRole("tooltip");
+    expect(button).toHaveAttribute("aria-describedby", "left-open-file-help");
+    expect(tooltip).toHaveAttribute("id", "left-open-file-help");
+    expect(tooltip).toHaveTextContent(
+      "Choose a file, or drag and drop one into this editor.",
+    );
+  });
   it("accepts only the newest import even if an old result arrives late", async () => {
     const first = deferredJob();
     const second = deferredJob();

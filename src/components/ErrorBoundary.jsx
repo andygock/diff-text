@@ -39,7 +39,6 @@ class ErrorBoundary extends React.Component {
           <h2>Something went wrong</h2>
           <div>
             <button onClick={() => this.reset()}>Try again</button>
-            <button onClick={() => window.location.reload()}>Reload</button>
           </div>
           {showDetails ? (
             <details style={{ whiteSpace: "pre-wrap", marginTop: "1rem" }}>
@@ -49,7 +48,9 @@ class ErrorBoundary extends React.Component {
             </details>
           ) : (
             <p style={{ marginTop: "1rem" }}>
-              An unexpected error occurred. Details are hidden in production.
+              The comparison could not be displayed. Your text is still
+              available in the editors above. Edit it or change comparison
+              options to retry.
             </p>
           )}
         </div>

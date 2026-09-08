@@ -1,100 +1,63 @@
 import React from "react";
-import PropTypes from "prop-types";
-import useWindowSize from "../hooks/useWindowSize";
 
-const DiffViewerOptions = ({ options, onChange }) => {
-  const compareButtons = [
-    {
-      method: "diffChars",
-      text: "Ch",
-      tooltip: "Characters",
-    },
-    {
-      method: "diffWords",
-      text: "W",
-      tooltip: "Words",
-    },
-    {
-      method: "diffWordsWithSpace",
-      text: "W+S",
-      tooltip: "Words & Space",
-    },
-    {
-      method: "diffLines",
-      text: "L",
-      tooltip: "Lines",
-    },
-    {
-      method: "diffTrimmedLines",
-      text: "TL",
-      tooltip: "Trimmed Lines",
-    },
-    {
-      method: "diffSentences",
-      text: "S",
-      tooltip: "Sentences",
-    },
-  ];
+const methods = [
+  ["diffChars", "Characters"],
+  ["diffWords", "Words"],
+  ["diffWordsWithSpace", "Words + spaces"],
+  ["diffLines", "Lines"],
+  ["diffSentences", "Sentences"],
+];
 
-  // use shorter buttons with tooltips when window width is small to prevent wrapping
-  const size = useWindowSize();
-  const useShortButtons = size.width < 1500;
-
+export default function DiffViewerOptions({
+  options,
+  onChange,
+  splitView,
+  onViewChange,
+}) {
   return (
-    <div className="options">
-      <div className="compare-method">
-        {compareButtons.map((data, index) => (
-          <span key={data.method}>
-            <input
-              id={`compareMethod${index}`}
-              type="radio"
-              name="compareMethod"
-              value={data.method}
-              checked={options?.compareMethod === data.method}
-              onChange={() => onChange({ compareMethod: data.method })}
-            />
-            <label htmlFor={`compareMethod${index}`} className="radio-button">
-              {useShortButtons ? data.text : data.tooltip}
-            </label>
-          </span>
-        ))}
-      </div>
-      <div className="view-type">
+    <div className="comparison-options">
+      <label className="inline-label">
+        Detail
+        <select
+          aria-label="Comparison detail"
+          value={options.compareMethod}
+          onChange={(event) => onChange({ compareMethod: event.target.value })}
+        >
+          {methods.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="check-label">
         <input
-          id="viewTypeUnified"
-          type="radio"
-          name="viewType"
-          value="unified"
-          checked={!options?.splitView}
-          onChange={() => onChange({ splitView: false })}
+          type="checkbox"
+          checked={options.ignoreWhitespace}
+          onChange={(event) =>
+            onChange({ ignoreWhitespace: event.target.checked })
+          }
         />
-        <label htmlFor="viewTypeUnified" className="radio-button">
+        Ignore whitespace
+      </label>
+      <label className="check-label">
+        <input
+          type="checkbox"
+          checked={options.ignoreLineEndings}
+          onChange={(event) =>
+            onChange({ ignoreLineEndings: event.target.checked })
+          }
+        />
+        Ignore line endings
+      </label>
+      <div className="segmented" role="group" aria-label="Diff layout">
+        <button aria-pressed={!splitView} onClick={() => onViewChange(false)}>
           Unified
-        </label>
-
-        <input
-          id="viewTypeSplit"
-          type="radio"
-          name="viewType"
-          value="split"
-          checked={options?.splitView}
-          onChange={() => onChange({ splitView: true })}
-        />
-        <label htmlFor="viewTypeSplit" className="radio-button">
+        </button>
+        <button aria-pressed={splitView} onClick={() => onViewChange(true)}>
           Split
-        </label>
+        </button>
       </div>
     </div>
   );
-};
-
-DiffViewerOptions.propTypes = {
-  options: PropTypes.object,
-  onChange: PropTypes.func.isRequired,
-};
-
-DiffViewerOptions.defaultProps = {
-  options: {},
-};
-
-export default DiffViewerOptions;
+}

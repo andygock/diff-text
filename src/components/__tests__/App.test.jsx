@@ -1,104 +1,88 @@
 import React from "react";
-import { render, screen, fireEvent, within } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import App from "../App";
-import { initialLeft, initialRight } from "../../library/inputs";
-
-vi.mock("../TextInput", () => ({
-  default: (props) => (
-    <div data-testid="text-input" data-line={props.scrollRequest?.line ?? ""}>
-      {props.value}
-    </div>
-  ),
-}));
-
-vi.mock("../Diff", () => ({
-  default: (props) => (
-    <div data-testid="diff-output">
-      <button
-        data-testid="click-left"
-        onClick={() =>
-          props.onLineNumberClick && props.onLineNumberClick("L-2")
-        }
-      >
-        L-2
-      </button>
-      <button
-        data-testid="click-right"
-        onClick={() =>
-          props.onLineNumberClick && props.onLineNumberClick("R-3")
-        }
-      >
-        R-3
-      </button>
-      <button
-        data-testid="click-invalid"
-        onClick={() =>
-          props.onLineNumberClick && props.onLineNumberClick("X-4")
-        }
-      >
-        X-4
-      </button>
-      <button
-        data-testid="click-undefined"
-        onClick={() =>
-          props.onLineNumberClick && props.onLineNumberClick("undefined-5")
-        }
-      >
-        undefined-5
-      </button>
-    </div>
-  ),
-}));
-
-vi.mock("../DiffViewerOptions", () => ({
-  default: () => <div data-testid="options" />,
-}));
-
-describe("App", () => {
-  it("renders the initial inputs and swaps them", () => {
-    const { getAllByTestId, getByText } = render(<App />);
-    const inputs = getAllByTestId("text-input");
-    const normalize = (text) => text.replace(/\s+/g, " ").trim();
-    expect(normalize(inputs[0].textContent || "")).toBe(normalize(initialLeft));
-    expect(normalize(inputs[1].textContent || "")).toBe(
-      normalize(initialRight),
-    );
-
-    const button = getByText("↔");
-    fireEvent.click(button);
-
-    const swapped = getAllByTestId("text-input");
-    expect(normalize(swapped[0].textContent || "")).toBe(
-      normalize(initialRight),
-    );
-    expect(normalize(swapped[1].textContent || "")).toBe(
-      normalize(initialLeft),
-    );
+import { startJob } from "../../library/jobs";
+import { compareText } from "../../library/compare";
+vi.mock("../../library/jobs", () => ({ startJob: vi.fn() }));
+beforeEach(() => {
+  vi.useFakeTimers();
+  startJob.mockImplementation((type, data) => ({
+    promise:
+      type === "compare"
+        ? Promise.resolve(compareText(data.left, data.right, data.options))
+        : new Promise(() => {}),
+    cancel: vi.fn(),
+  }));
+});
+afterEach(() => vi.useRealTimers());
+const advance = () =>
+  act(async () => {
+    await vi.advanceTimersByTimeAsync(300);
   });
-
-  it("handleLineNumberClick parses only L/R prefixes and ignores others", async () => {
-    const { getAllByTestId } = render(<App />);
-
-    // click a valid left-line button, expect left scrollRequest to update
-    const diffOutputs = getAllByTestId("diff-output");
-    const diffOutput = diffOutputs[0];
-    const clickLeft = within(diffOutput).getByTestId("click-left");
-    fireEvent.click(clickLeft);
-    await screen.findAllByTestId("text-input");
-    const inputsAfter = getAllByTestId("text-input");
-    expect(inputsAfter[0].dataset.line).toBe("2");
-
-    // clicking an invalid prefix should not change the recorded line
-    const clickInvalid = within(diffOutput).getByTestId("click-invalid");
-    fireEvent.click(clickInvalid);
-    const inputsAfterInvalid = getAllByTestId("text-input");
-    expect(inputsAfterInvalid[0].dataset.line).toBe("2");
-
-    // previously tolerated 'undefined-...' should be ignored now
-    const clickUndefined = within(diffOutput).getByTestId("click-undefined");
-    fireEvent.click(clickUndefined);
-    const inputsAfterUndef = getAllByTestId("text-input");
-    expect(inputsAfterUndef[0].dataset.line).toBe("2");
+describe("App", () => {
+  it("does not recompute when changing only the layout", async () => {
+    render(<App />);
+    await advance();
+    const calls = startJob.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Unified" }));
+    await advance();
+    expect(startJob.mock.calls.length).toBe(calls);
+  });
+  it("swaps the visible latest text without waiting for comparison", async () => {
+    render(<App />);
+    fireEvent.change(screen.getByLabelText("Original"), {
+      target: { value: "just typed" },
+    });
+    fireEvent.change(screen.getByLabelText("Modified"), {
+      target: { value: "right value" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Swap original and modified" }),
+    );
+    expect(screen.getByLabelText("Original")).toHaveValue("right value");
+    expect(screen.getByLabelText("Modified")).toHaveValue("just typed");
+    await advance();
+    expect(screen.getByLabelText("Modified")).toHaveValue("just typed");
+  });
+  it("marks results stale immediately and waits for Compare in manual mode", async () => {
+    render(<App />);
+    await advance();
+    expect(screen.getByText("Comparison up to date")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Manual"));
+    fireEvent.change(screen.getByLabelText("Original"), {
+      target: { value: "changed" },
+    });
+    expect(screen.getByText("Previous result")).toBeInTheDocument();
+    const before = startJob.mock.calls.length;
+    await advance();
+    expect(startJob.mock.calls.length).toBe(before);
+    fireEvent.click(screen.getByRole("button", { name: /Compare/ }));
+    await advance();
+    expect(startJob.mock.calls.length).toBe(before + 1);
+    expect(screen.queryByText("Previous result")).not.toBeInTheDocument();
+  });
+  it("cancels imports on swap", () => {
+    const cancel = vi.fn();
+    startJob.mockReturnValue({ promise: new Promise(() => {}), cancel });
+    render(<App />);
+    fireEvent.drop(screen.getByRole("region", { name: "Original editor" }), {
+      dataTransfer: { files: [{ name: "file.txt", size: 1 }] },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Swap original and modified" }),
+    );
+    expect(cancel).toHaveBeenCalled();
+  });
+  it("switching to manual during comparison leaves a usable Compare button", async () => {
+    startJob.mockReturnValue({
+      promise: new Promise(() => {}),
+      cancel: vi.fn(),
+    });
+    render(<App />);
+    await advance();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Manual"));
+    expect(screen.getByRole("button", { name: /Compare/ })).toBeInTheDocument();
   });
 });

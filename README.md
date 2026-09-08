@@ -1,53 +1,104 @@
 # diff-text
 
-A web app for comparing two portions of text using [react-diff-viewer-continued](https://aeolun.github.io/react-diff-viewer-continued/).
+A compact, private text and spreadsheet comparison app built with React and Vite.
+Text processing happens in local Web Workers. Geist and Geist Mono are bundled
+with the app; there are no font CDN or document-upload requests.
 
-- Live demo at [diff.gock.net](https://diff.gock.net/) hosted on Vercel.
+The interface uses neutral, shadcn-style controls, labelled editors, visible
+keyboard focus and a virtualised unified or split comparison view.
 
-## Screenshot
+## Development
 
-![Screenshot](https://github.com/andygock/diff-text/blob/master/screenshots/diff-text-screenshot.png?raw=true)
+Use pnpm exclusively. Keep the configured minimum release age in place when
+adding or updating packages.
 
-## Features
+```sh
+pnpm install
+pnpm dev
+```
 
-- Supports drag and drop of files into the `textarea` via [react-dropzone-textarea](https://github.com/andygock/react-dropzone-textarea). Disclosure: I'm the author of the library.
-- Supports [multiple spreadsheet formats](https://docs.sheetjs.com/docs/#supported-file-formats). Currently, it only reads the first worksheet for multi-sheet workbooks.
+```sh
+pnpm lint
+pnpm test
+pnpm build
+pnpm check:worker
+pnpm benchmark
+```
 
-## Install and build
+- `pnpm check:worker` runs the generated production worker under a Node transport
+  adapter. It checks exact EOF comparison, decoding and the lazy spreadsheet chunk.
+  Run the build first. This does not replace browser validation.
+- `pnpm benchmark` measures the source comparison and display-model generation
+  without starting a listening server. Timings are diagnostic, not brittle test thresholds.
+- `pnpm format` formats source files.
+- `pnpm test:watch` runs tests during development.
+- `pnpm preview` serves the production build locally.
 
-Install [pnpm](https://pnpm.io/)
+## Using the app
 
-    npm install -g pnpm
+Paste text, choose **Open file**, or drop one file into each editor. Swapping sides
+uses the latest visible text and cancels unfinished imports.
 
-Install dependencies:
+Small inputs compare automatically after a short pause. Above 500,000 combined
+UTF-16 code units, comparison requires **Compare**. Manual mode provides the same
+behaviour for any input. Ctrl/Command + Enter also compares. Cancel stops the active
+worker immediately; stale results remain clearly labelled.
 
-    pnpm install
+- Characters, words, words with spaces, sentences and line-only detail.
+- Exact trailing whitespace, final newlines and CR/LF/CRLF comparison by default.
+- Explicit ignore-whitespace and ignore-line-ending options.
+- Next/previous change navigation, expandable unchanged context, and source-line links.
+- Optional editor wrapping. Source-line navigation turns wrapping off for accurate positioning.
+- Automatic UTF-8/UTF-16 BOM detection and explicit UTF-8, UTF-16 or Windows-1252 decoding.
+- Spreadsheet worksheet selection; selected sheets are converted to CSV.
 
-Run:
+The line-ending badge on changed rows makes otherwise invisible changes visible.
+Very long output lines preview the first 2,000 characters and provide a link to
+the full source line. Input text is retained in memory and is not persisted across reloads.
 
-    pnpm start
+## Architecture and limits
 
-Build production ready static files to `dist/`:
+- `TextInput` commits editor changes immediately; only comparison is debounced.
+  Import generations prevent late results from overwriting edits, swaps or newer files.
+- `useComparison` tracks document revisions and comparison options. Presentation
+  changes do not rerun the diff.
+- `jobs.js` owns worker creation, cancellation, deadlines and error settlement.
+- `text.js` shares bounded validation and decoding. It scans without spreading
+  line arrays into function arguments. Validation runs in the worker before comparison
+  or acceptance of an import.
+- `parse.js` limits file bytes, checks ZIP expansion and parses only the selected
+  worksheet. `sheetRows`, worksheet dimensions and CSV validation prevent silent truncation.
+- `compare.js` performs bounded line alignment and optional bounded inline detail.
+  If the alignment budget is exceeded, it preserves matching edges and explicitly
+  marks the unmatched middle as removed/added.
+- `displayRows.js` constructs context with a linear scan. The renderer mounts only
+  the visible rows plus overscan, including when unchanged lines are expanded.
 
-    pnpm build
+Limits are defined in `src/config.js`:
 
-## Testing
+| Resource                                    | Limit                              |
+| ------------------------------------------- | ---------------------------------- |
+| File bytes / decoded UTF-8 text             | 10 MiB per side, inclusive         |
+| Logical lines, counting an empty final line | 100,000                            |
+| Characters per line                         | 100,000 UTF-16 code units          |
+| Declared expanded workbook archive          | 64 MiB                             |
+| Worksheet extent                            | 250,000 cells, at most 512 columns |
+| Line-alignment budget                       | 1.5 seconds / edit distance 2,000  |
+| Whole worker job                            | 20 seconds                         |
 
-This project uses Vitest with React Testing Library.
+Large files automatically use line-only detail. Smaller inputs also have per-line
+and aggregate inline budgets. A visible notice explains any fallback; the app does
+not silently discard differences. A worker improves responsiveness but cannot
+guarantee a browser-wide memory ceiling for every malformed workbook. ZIP64
+workbooks are rejected.
 
-Run the full test suite:
-
-    pnpm test
-
-Run tests in watch mode:
-
-    pnpm test:watch
-
-If required, use the following Netlify build command
-
-    pnpm build || ( npm install pnpm && pnpm build )
+Tests cover races, worker failures and cancellation, exact round-tripping,
+encoding, worksheet limits, virtualisation and source navigation. Browser smoke
+tests are run only when requested.
 
 ## References
 
-- [react-diff-viewer-continued](https://github.com/aeolun/react-diff-viewer-continued)
-- [SheetJS](https://github.com/sheetjs/sheetjs)
+- [jsdiff](https://github.com/kpdecker/jsdiff)
+- [SheetJS](https://docs.sheetjs.com/)
+- [Fontsource](https://fontsource.org/)
+- [Source repository](https://github.com/andygock/diff-text)

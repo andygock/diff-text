@@ -1,77 +1,77 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import Diff from "../Diff";
-import config from "../../config";
-
-vi.mock("react-diff-viewer-continued", () => ({
-  default: (props) => (
-    <div
-      data-testid="diff-viewer"
-      data-old={props.oldValue}
-      data-new={props.newValue}
-      data-split={String(props.splitView)}
-      data-compare={props.compareMethod ?? ""}
-    />
-  ),
-}));
+import { compareText } from "../../library/compare";
 
 describe("Diff", () => {
-  const originalConfig = { ...config };
-
-  beforeEach(() => {
-    Object.assign(config, originalConfig);
-  });
-
-  afterEach(() => {
-    Object.assign(config, originalConfig);
-  });
-
-  it("shows an error when lines exceed max length", () => {
-    config.maxPermittedLineLength = 3;
-    render(<Diff left={"abcd"} right={"x"} options={{}} />);
-
-    expect(
-      screen.getByText(/Can not calculate line differences/i),
-    ).toBeInTheDocument();
-  });
-
-  it("shows identical message when content matches", () => {
-    render(<Diff left={"same"} right={"same"} options={{}} />);
+  it("shows exact equality and preserves EOF changes", () => {
+    render(
+      <Diff
+        result={compareText("same", "same")}
+        splitView={false}
+        onNavigate={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Content is identical")).toBeInTheDocument();
   });
-
-  it("renders the diff viewer with provided options", () => {
-    const { getAllByTestId } = render(
-      <Diff
-        left={"a"}
-        right={"b"}
-        options={{ splitView: true, compareMethod: "diffWords" }}
-      />,
+  it("renders EOF markers and maps navigation to aligned source lines", () => {
+    const navigate = vi.fn();
+    const result = compareText("a\nb", "inserted\na\nb\n");
+    render(<Diff result={result} splitView onNavigate={navigate} />);
+    expect(screen.getByText("No newline")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Go to original line 2" }),
     );
-
-    const viewers = getAllByTestId("diff-viewer");
-    const viewer = viewers[0];
-    expect(viewer.dataset.old).toBe("a");
-    expect(viewer.dataset.new).toBe("b");
-    expect(viewer.dataset.split).toBe("true");
-    expect(viewer.dataset.compare).toBe("diffWords");
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        left: expect.objectContaining({ number: 2 }),
+        right: expect.objectContaining({ number: 3 }),
+      }),
+      "left",
+    );
   });
-
-  it("does not allow options to override critical props", () => {
-    const { getAllByTestId } = render(
+  it("keeps mounted rows bounded for a large expanded diff", () => {
+    const result = compareText("a\n".repeat(10000), "b\n".repeat(10000), {
+      compareMethod: "diffLines",
+    });
+    const { container } = render(
+      <Diff result={result} splitView onNavigate={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByLabelText("Show unchanged"));
+    expect(container.querySelectorAll(".diff-row").length).toBeLessThan(60);
+    fireEvent.scroll(
+      screen.getByRole("region", { name: "Comparison results" }),
+      { target: { scrollTop: 200000 } },
+    );
+    expect(container.querySelectorAll(".diff-row").length).toBeLessThan(60);
+  });
+  it("disables source navigation while showing a stale result", () => {
+    render(
       <Diff
-        left={"a"}
-        right={"b"}
-        options={{ splitView: true, compareMethod: "diffWords", oldValue: "x" }}
+        result={compareText("a", "b")}
+        splitView
+        stale
+        onNavigate={vi.fn()}
       />,
     );
-
-    const viewers = getAllByTestId("diff-viewer");
-    const viewer = viewers[0];
-    // old value must come from left prop, not from options
-    expect(viewer.dataset.old).toBe("a");
-    expect(viewer.dataset.split).toBe("true");
-    expect(viewer.dataset.old).not.toBe("x");
+    expect(
+      screen.getByRole("button", { name: "Go to original line 1" }),
+    ).toBeDisabled();
+  });
+  it("navigates to changes beyond the virtualised viewport", () => {
+    const same = Array.from({ length: 1000 }, (_, i) => i + "\n").join("");
+    render(
+      <Diff
+        result={compareText(same + "old", same + "new")}
+        splitView
+        onNavigate={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Show unchanged"));
+    fireEvent.click(screen.getByRole("button", { name: "Next change" }));
+    expect(
+      screen.getByRole("button", { name: "Go to original line 1001" }),
+    ).toBeInTheDocument();
   });
 });

@@ -1,221 +1,130 @@
-import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react";
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import React, { createRef } from "react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import TextInput from "../TextInput";
-import config from "../../config";
-import { showError } from "../../library/toaster";
-import * as XLSX from "xlsx";
+import { startJob } from "../../library/jobs";
+vi.mock("../../library/jobs", () => ({ startJob: vi.fn() }));
 
-let lastDropzoneProps = null;
+const document = { text: "original", revision: 1, name: "", sheets: [] };
+function deferredJob() {
+  let resolve;
+  let reject;
+  const promise = new Promise((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  // Resolve can still be delivered after cancel to exercise the generation guard.
+  return { promise, resolve, reject, cancel: vi.fn() };
+}
+const drop = (file) =>
+  fireEvent.drop(screen.getByRole("region", { name: "Original editor" }), {
+    dataTransfer: { files: [file] },
+  });
 
-vi.mock("react-dropzone-textarea", () => ({
-  default: (props) => {
-    lastDropzoneProps = props;
-    return (
-      <textarea
-        data-testid="dropzone"
-        value={props.value}
-        onChange={props.onChange}
-      />
-    );
-  },
-}));
-
-vi.mock("../../library/toaster", () => ({
-  showError: vi.fn(),
-  showMessage: vi.fn(),
-}));
-
-vi.mock("xlsx", () => {
-  const read = vi.fn();
-  const utils = { sheet_to_csv: vi.fn() };
-  const mod = { read, utils };
-  return { default: mod, ...mod };
-});
-
-const toArrayBuffer = (text) => new TextEncoder().encode(text).buffer;
-
+beforeEach(() => vi.clearAllMocks());
 describe("TextInput", () => {
-  const originalConfig = { ...config };
-
-  beforeEach(() => {
-    lastDropzoneProps = null;
-    vi.clearAllMocks();
-    Object.assign(config, originalConfig);
-  });
-
-  afterEach(() => {
-    Object.assign(config, originalConfig);
-  });
-
-  it("updates via onChange", async () => {
+  it("commits typing immediately without a stale debounce timer", () => {
     const onUpdate = vi.fn();
-    render(<TextInput value="hello" onUpdate={onUpdate} />);
-
-    const textarea = document.querySelector('[data-testid="dropzone"]');
-    fireEvent.change(textarea, { target: { value: "next" } });
-    await waitFor(() => {
-      expect(onUpdate).toHaveBeenCalledWith("next");
+    render(<TextInput side="left" document={document} onUpdate={onUpdate} />);
+    fireEvent.change(screen.getByLabelText("Original"), {
+      target: { value: "latest" },
     });
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "latest" }),
+    );
   });
-
-  it("ignores non-string onDropRead values", () => {
+  it("accepts only the newest import even if an old result arrives late", async () => {
+    const first = deferredJob();
+    const second = deferredJob();
+    startJob.mockReturnValueOnce(first).mockReturnValueOnce(second);
     const onUpdate = vi.fn();
-    render(<TextInput value="" onUpdate={onUpdate} />);
-
-    lastDropzoneProps.onDropRead(null);
+    render(<TextInput side="left" document={document} onUpdate={onUpdate} />);
+    drop({ name: "first.txt", size: 1 });
+    drop({ name: "second.txt", size: 1 });
+    await act(async () => second.resolve({ text: "new", sheets: [] }));
+    await act(async () => first.resolve({ text: "old", sheets: [] }));
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(onUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "new" }),
+    );
+    expect(first.cancel).toHaveBeenCalled();
+  });
+  it("typing invalidates an import and unmount cancels work", async () => {
+    const job = deferredJob();
+    startJob.mockReturnValue(job);
+    const onUpdate = vi.fn();
+    const { unmount } = render(
+      <TextInput side="left" document={document} onUpdate={onUpdate} />,
+    );
+    drop({ name: "file.txt", size: 1 });
+    fireEvent.change(screen.getByLabelText("Original"), {
+      target: { value: "typed" },
+    });
+    await act(async () => job.resolve({ text: "late", sheets: [] }));
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    drop({ name: "another.txt", size: 1 });
+    unmount();
+    expect(job.cancel).toHaveBeenCalled();
+  });
+  it("keeps an import error visible and preserves the text", async () => {
+    const job = deferredJob();
+    startJob.mockReturnValue(job);
+    const onUpdate = vi.fn();
+    render(<TextInput side="left" document={document} onUpdate={onUpdate} />);
+    drop({ name: "file.txt", size: 1 });
+    await act(async () => job.reject(new Error("Invalid encoding")));
+    expect(screen.getByRole("alert")).toHaveTextContent("Invalid encoding");
+    expect(screen.getByLabelText("Original")).toHaveValue("original");
     expect(onUpdate).not.toHaveBeenCalled();
-
-    lastDropzoneProps.onDropRead("ok");
-    expect(onUpdate).toHaveBeenCalledWith("ok");
   });
-
-  it("rejects missing arrayBuffer", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-
-    const result = await lastDropzoneProps.customTextConverter(null, {
-      file: { name: "file.txt" },
-    });
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalledWith("Error: No file data to read");
+  it("rejects oversized files before creating a worker", () => {
+    render(<TextInput side="left" document={document} onUpdate={vi.fn()} />);
+    drop({ name: "large.txt", size: 11 * 1024 * 1024 });
+    expect(startJob).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("10 MiB");
   });
-
-  it("rejects binary files", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-
-    const bytes = new Uint8Array(100).fill(0);
-    const result = await lastDropzoneProps.customTextConverter(bytes.buffer, {
-      file: { name: "file.bin" },
-    });
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("rejects oversized files", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-    config.maxFileSize = 4;
-
-    const result = await lastDropzoneProps.customTextConverter(
-      new Uint8Array(10).buffer,
-      { file: { name: "file.txt" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("rejects too many text lines", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-    config.maxLines = 2;
-
-    const text = "a\nb\nc\n";
-    const result = await lastDropzoneProps.customTextConverter(
-      toArrayBuffer(text),
-      { file: { name: "file.txt" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("rejects overly long text lines", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-    config.maxPermittedLineLength = 3;
-
-    const text = "abcd\n";
-    const result = await lastDropzoneProps.customTextConverter(
-      toArrayBuffer(text),
-      { file: { name: "file.txt" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("parses spreadsheets and trims trailing empty lines", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-
-    XLSX.read.mockReturnValue({
-      SheetNames: ["Sheet1"],
-      Sheets: { Sheet1: {} },
-    });
-    XLSX.utils.sheet_to_csv.mockReturnValue("a,b\nc,d\n\n");
-
-    const result = await lastDropzoneProps.customTextConverter(
-      new ArrayBuffer(8),
-      { file: { name: "file.xlsx" } },
-    );
-    expect(result).toBe("a,b\nc,d\n\n");
-  });
-
-  it("rejects spreadsheets with no worksheets", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-
-    XLSX.read.mockReturnValue({
-      SheetNames: [],
-      Sheets: {},
-    });
-
-    const result = await lastDropzoneProps.customTextConverter(
-      new ArrayBuffer(8),
-      { file: { name: "file.xlsx" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalledWith(
-      "Error: Spreadsheet has no worksheets",
-    );
-  });
-
-  it("rejects spreadsheets that exceed max lines", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-    config.maxLines = 1;
-
-    XLSX.read.mockReturnValue({
-      SheetNames: ["Sheet1"],
-      Sheets: { Sheet1: {} },
-    });
-    XLSX.utils.sheet_to_csv.mockReturnValue("a\nb\n");
-
-    const result = await lastDropzoneProps.customTextConverter(
-      new ArrayBuffer(8),
-      { file: { name: "file.xlsx" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("rejects spreadsheets with overly long lines", async () => {
-    render(<TextInput value="" onUpdate={() => {}} />);
-    config.maxPermittedLineLength = 3;
-
-    XLSX.read.mockReturnValue({
-      SheetNames: ["Sheet1"],
-      Sheets: { Sheet1: {} },
-    });
-    XLSX.utils.sheet_to_csv.mockReturnValue("abcd\n");
-
-    const result = await lastDropzoneProps.customTextConverter(
-      new ArrayBuffer(8),
-      { file: { name: "file.xlsx" } },
-    );
-    expect(result).toBeNull();
-    expect(showError).toHaveBeenCalled();
-  });
-
-  it("handles malformed scroll requests without throwing", () => {
-    // ensure NaN or non-finite values don't cause exceptions
+  it("retries the failed file when the encoding changes", async () => {
+    const first = deferredJob();
+    const second = deferredJob();
+    startJob.mockReturnValueOnce(first).mockReturnValueOnce(second);
     render(
       <TextInput
-        value="a\nb\nc"
-        onUpdate={() => {}}
-        scrollRequest={{ line: NaN, token: 1 }}
+        side="left"
+        document={{ ...document, file: { name: "previous.txt" } }}
+        onUpdate={vi.fn()}
       />,
     );
-
-    // also try string line (should be ignored by effect since not a number)
+    const failedFile = { name: "legacy.txt", size: 1 };
+    drop(failedFile);
+    await act(async () => first.reject(new Error("Invalid encoding")));
+    fireEvent.change(screen.getByLabelText("Original encoding"), {
+      target: { value: "windows-1252" },
+    });
+    expect(startJob).toHaveBeenLastCalledWith(
+      "parse",
+      expect.objectContaining({ file: failedFile, encoding: "windows-1252" }),
+      expect.any(Function),
+    );
+  });
+  it("selects the requested source line and turns wrapping off for accurate navigation", () => {
+    const ref = createRef();
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback();
+      return 1;
+    });
     render(
       <TextInput
-        value="a\nb\nc"
-        onUpdate={() => {}}
-        scrollRequest={{ line: "3", token: 2 }}
+        ref={ref}
+        side="left"
+        document={{ ...document, text: "a\nbb\nccc" }}
+        onUpdate={vi.fn()}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Wrap" }));
+    act(() => ref.current.goToLine(3));
+    const editor = screen.getByLabelText("Original");
+    expect(editor.selectionStart).toBe(5);
+    expect(editor.selectionEnd).toBe(8);
+    expect(editor).toHaveAttribute("wrap", "off");
   });
 });

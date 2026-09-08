@@ -5,11 +5,6 @@ import react from "@vitejs/plugin-react-swc";
 export default defineConfig({
   plugins: [react()],
   base: "./",
-  resolve: {
-    alias: {
-      path: "path-browserify",
-    },
-  },
   // Note: removed broad `define.global` substitution because it can pull in
   // unexpected polyfills/shims and expand the attack surface. Add targeted
   // polyfills only when a specific global is required.

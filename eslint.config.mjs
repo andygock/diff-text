@@ -21,6 +21,13 @@ export default [
         performance: "readonly",
         TextDecoder: "readonly",
         TextEncoder: "readonly",
+        Worker: "readonly",
+        URL: "readonly",
+        DOMException: "readonly",
+        ResizeObserver: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        requestAnimationFrame: "readonly",
       },
     },
     plugins: {

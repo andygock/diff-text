@@ -1,556 +1,281 @@
-/* global Worker, URL */
-import classNames from "classnames";
-import PropTypes from "prop-types";
-import React from "react";
-import DropTextArea from "react-dropzone-textarea";
-import prettyBytes from "pretty-bytes";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
+import { startJob } from "../library/jobs";
 import config from "../config";
-import { showError } from "../library/toaster";
 
-// wrap textarea in forwardRef to allow passing to DropTextArea
-const TextArea = React.forwardRef((props, ref) => (
-  <textarea {...props} ref={ref} spellCheck="false" autoComplete="off" />
-));
-TextArea.displayName = "TextArea";
+const TextInput = forwardRef(function TextInput(
+  { side, document, onUpdate },
+  ref,
+) {
+  const textarea = useRef(null);
+  const picker = useRef(null);
+  const active = useRef(null);
+  const lastFile = useRef(null);
+  const generation = useRef(0);
+  const [dragging, setDragging] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [wrap, setWrap] = useState(false);
+  const [encoding, setEncoding] = useState("auto");
+  const label = side === "left" ? "Original" : "Modified";
 
-const createCustomTextConverter = (callbacks = {}) => {
-  const notifyFailure = (message) => {
-    if (callbacks.onFailure) {
-      callbacks.onFailure(message);
-    }
+  const cancel = () => {
+    generation.current++;
+    active.current?.cancel();
+    active.current = null;
+    lastFile.current = null;
+    setBusy(false);
+    setStatus("");
   };
-
-  const notifySuccess = () => {
-    if (callbacks.onSuccess) {
-      callbacks.onSuccess();
-    }
-  };
-
-  return (arrayBuffer, { file } = {}) => {
-    if (callbacks.onStart) {
-      callbacks.onStart(file);
-    }
-
-    return new Promise((resolve) => {
-      const fail = (message) => {
-        showError(message);
-        notifyFailure(message);
-        resolve(null);
-      };
-
-      try {
-        if (!arrayBuffer) {
-          fail("Error: No file data to read");
-          return;
-        }
-
-        // enforce strict max file size for all files
-        if (arrayBuffer.byteLength >= config.maxFileSize) {
-          const prettyMaxSize = prettyBytes(config.maxFileSize);
-          fail(`Error: File is larger than ${prettyMaxSize}`);
-          return;
-        }
-
-        if (isSpreadsheetFile(file)) {
-          // If Worker is not available (tests / Node environment), fall back to main-thread parsing
-          if (typeof Worker === "undefined") {
-            import("xlsx")
-              .then((mod) => {
-                // Normalize possible interop shape (some bundlers expose the package on .default)
-                const XLSX = mod?.default || mod;
-                try {
-                  const wb = XLSX.read(arrayBuffer, { type: "array" });
-
-                  if (!wb.SheetNames || wb.SheetNames.length === 0) {
-                    fail("Error: Spreadsheet has no worksheets");
-                    return;
-                  }
-
-                  const ws = wb.Sheets[wb.SheetNames[0]];
-                  // https://github.com/sheetjs/sheetjs#utility-functions
-                  const csv = XLSX.utils.sheet_to_csv(ws);
-
-                  const lines = csv.split("\n");
-                  while (lines.length > 0 && lines[lines.length - 1] === "") {
-                    lines.pop();
-                  }
-
-                  if (lines.length > config.maxLines) {
-                    fail(
-                      `Error: Exceeded maximum ${config.maxLines} spreadsheet lines (found ${lines.length})`,
-                    );
-                    return;
-                  }
-
-                  const maxLineLength =
-                    lines.length === 0
-                      ? 0
-                      : Math.max(...lines.map((line) => line.length));
-                  if (maxLineLength > config.maxPermittedLineLength) {
-                    fail(
-                      `Error: Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
-                    );
-                    return;
-                  }
-
-                  resolve(csv);
-                  notifySuccess();
-                } catch (e) {
-                  fail(`Error: ${e.message}`);
-                }
-              })
-              .catch((error) => {
-                fail(`Error: ${error.message}`);
-              });
-          } else {
-            // offload spreadsheet parsing to a Web Worker to avoid freezing main thread
-            try {
-              const worker = new Worker(
-                new URL("../workers/parseWorker.js", import.meta.url),
-                {
-                  type: "module",
-                },
-              );
-
-              const msgHandler = (e) => {
-                const msg = e.data || {};
-                if (msg.type === "progress" && callbacks.onProgress) {
-                  callbacks.onProgress(msg.message, msg.progress);
-                  return;
-                }
-                if (msg.type === "result") {
-                  resolve(msg.result);
-                  notifySuccess();
-                  worker.removeEventListener("message", msgHandler);
-                  worker.terminate();
-                  return;
-                }
-                if (msg.type === "error") {
-                  fail(`Error: ${msg.message}`);
-                  worker.removeEventListener("message", msgHandler);
-                  worker.terminate();
-                  return;
-                }
-              };
-
-              worker.addEventListener("message", msgHandler);
-              // arrayBuffer is not used after this point on the main thread,
-              // so it's safe to transfer to the worker which avoids copying large buffers.
-              // If the main thread must keep a copy, send `arrayBuffer.slice()` instead.
-              // transfer the ArrayBuffer to the worker to avoid copying large buffers
-              worker.postMessage(
-                {
-                  id: Math.random().toString(36).slice(2),
-                  type: "parse",
-                  arrayBuffer,
-                  file,
-                },
-                [arrayBuffer],
-              );
-            } catch (e) {
-              fail(`Error: ${e.message}`);
-            }
-          }
-        } else {
-          // standard text or other non-spreadsheet
-          if (isBinary(arrayBuffer)) {
-            fail(
-              "Error: Detected non-text file (over 5% of first 512 bytes are control characters)",
-            );
-            return;
-          }
-
-          // convert ArrayBuffer to string
-          const string = arrayBufferToString(arrayBuffer);
-
-          // check number of lines
-          const lines = string.split("\n");
-
-          if (lines.length > config.maxLines) {
-            fail(
-              `Error: Exceeded maximum ${config.maxLines} lines (found ${lines.length})`,
-            );
-            return;
-          }
-
-          // check length of lines
-          const maxLineLength =
-            lines.length === 0
-              ? 0
-              : Math.max(...lines.map((line) => line.length));
-          if (maxLineLength > config.maxPermittedLineLength) {
-            fail(
-              `Error: Exceeded maximum ${config.maxPermittedLineLength} line length (found ${maxLineLength})`,
-            );
-            return;
-          }
-
-          resolve(string);
-          notifySuccess();
-        }
-      } catch (error) {
-        fail(`Error: ${error.message}`);
-      }
-    });
-  };
-};
-
-// check arrayBuffer if it is a binary file or text file, make the best guess
-// check first 512 bytes only
-const isBinary = (arrayBuffer) => {
-  const uint8Array = new Uint8Array(arrayBuffer);
-  const maxBytes = Math.min(uint8Array.byteLength, 512);
-
-  if (maxBytes === 0) {
-    return false;
-  }
-
-  // count number of control bytes
-  let binaryBytes = 0;
-
-  // loop through up to first 512 bytes
-  for (let i = 0; i < maxBytes; i++) {
-    const byte = uint8Array[i];
-
-    // ignore tab, CR, and LF
-    if (byte === 0x09 || byte === 0x0a || byte === 0x0d) {
-      continue;
-    }
-
-    if (byte === 0x00 || byte < 0x20 || byte === 0x7f) {
-      binaryBytes++;
-    }
-  }
-
-  // console.log(`binary bytes detected: ${binaryBytes}/${maxBytes}`);
-
-  // if more than 5% of bytes are control characters, then it is probably a binary file
-  if (binaryBytes / maxBytes > 0.05) {
-    return true;
-  }
-
-  return false;
-};
-
-// check whether file is a spreadsheet file
-const isSpreadsheetFile = (file) => {
-  if (!file?.name) {
-    return false;
-  }
-
-  const ext = file.name.slice(((file.name.lastIndexOf(".") - 1) >>> 0) + 2);
-  return [
-    "xls",
-    "xlsx",
-    "xlsb",
-    "xlsm",
-    "dif",
-    "sylk",
-    "slk",
-    "prn",
-    "ods",
-    "fods",
-    "dbf",
-    "wks",
-    "wk1",
-    "wk2",
-    "wk3",
-    "wk4",
-    "123",
-    "wq1",
-    "wq2",
-    "wb1",
-    "wb2",
-    "wb3",
-    "qbw",
-  ].includes(ext.toLowerCase());
-};
-
-// convert ArrayBuffer to string, works in browsers only
-const arrayBufferToString = (arrayBuffer) =>
-  new TextDecoder("utf-8").decode(arrayBuffer);
-
-const TextInput = ({ onUpdate, value, scrollRequest }) => {
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dropStatus, setDropStatus] = React.useState({
-    active: false,
-    progress: 0,
-    message: "",
-  });
-  const [localValue, setLocalValue] = React.useState(value);
-  const progressIntervalRef = React.useRef(null);
-  const hideTimeoutRef = React.useRef(null);
-  const debounceTimeoutRef = React.useRef(null);
-  const textareaRef = React.useRef(null);
-
-  const DEBOUNCE_DELAY = 500; // ms of inactivity before processing text input
-
-  React.useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
-  const cancelTimers = React.useCallback(() => {
-    if (progressIntervalRef.current) {
-      window.clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    if (hideTimeoutRef.current) {
-      window.clearTimeout(hideTimeoutRef.current);
-      hideTimeoutRef.current = null;
-    }
-  }, []);
-
-  const showStatus = React.useCallback((message, progress) => {
-    setDropStatus({ active: true, progress, message });
-  }, []);
-
-  const startProgress = React.useCallback(
-    (file) => {
-      const fileLabel = file?.name ?? "file";
-      cancelTimers();
-      showStatus(`Reading ${fileLabel}`, 0);
-      progressIntervalRef.current = window.setInterval(() => {
-        setDropStatus((previous) => ({
-          ...previous,
-          progress: Math.min(99, previous.progress + Math.random() * 12 + 3),
-        }));
-      }, 220);
-    },
-    [cancelTimers, showStatus],
-  );
-
-  const completeProgress = React.useCallback(() => {
-    cancelTimers();
-    showStatus("Ready", 100);
-    hideTimeoutRef.current = window.setTimeout(() => {
-      setDropStatus({ active: false, progress: 0, message: "" });
-    }, 900);
-  }, [cancelTimers, showStatus]);
-
-  const failProgress = React.useCallback(
-    (message) => {
-      cancelTimers();
-      showStatus(message || "Unable to read file", 0);
-      hideTimeoutRef.current = window.setTimeout(() => {
-        setDropStatus({ active: false, progress: 0, message: "" });
-      }, 1500);
-    },
-    [cancelTimers, showStatus],
-  );
-
-  React.useEffect(() => cancelTimers, [cancelTimers]);
-
-  const debouncedOnUpdate = React.useCallback(
-    (newValue) => {
-      if (debounceTimeoutRef.current) {
-        window.clearTimeout(debounceTimeoutRef.current);
-      }
-      debounceTimeoutRef.current = window.setTimeout(() => {
-        onUpdate(newValue);
-      }, DEBOUNCE_DELAY);
-    },
-    [onUpdate, DEBOUNCE_DELAY],
-  );
-
-  React.useEffect(
+  useEffect(
     () => () => {
-      if (debounceTimeoutRef.current) {
-        window.clearTimeout(debounceTimeoutRef.current);
-      }
+      generation.current++;
+      active.current?.cancel();
     },
     [],
   );
 
-  const scrollToLine = React.useCallback(
-    (rawLineNumber, { select = true } = {}) => {
-      const textarea = textareaRef.current;
-      if (!textarea) {
-        return;
+  useImperativeHandle(ref, () => ({
+    cancel,
+    goToLine(number, select = true) {
+      const element = textarea.current;
+      if (!element) return;
+      // Fixed line metrics make navigation reliable. Turn wrapping off explicitly
+      // when navigating rather than estimating a logical line's visual height.
+      if (wrap) {
+        setWrap(false);
+        setStatus("Wrapping turned off for line navigation.");
       }
-      // normalize numeric input and bail on non-finite values
-      const num =
-        typeof rawLineNumber === "number"
-          ? rawLineNumber
-          : Number(rawLineNumber);
-      if (!Number.isFinite(num)) {
-        return;
+      const text = element.value;
+      let start = 0;
+      let current = 1;
+      while (current < number) {
+        const next = text.indexOf("\n", start);
+        if (next < 0) break;
+        start = next + 1;
+        current++;
       }
-
-      const lines = String(textarea.value || "").split("\n");
-      const totalLines = Math.max(1, lines.length);
-      const targetLine = Math.min(totalLines, Math.max(1, Math.floor(num)));
-
-      const computedStyles =
-        typeof window !== "undefined"
-          ? window.getComputedStyle(textarea)
-          : null;
-      const rawLineHeight =
-        computedStyles && computedStyles.lineHeight
-          ? parseFloat(computedStyles.lineHeight)
-          : 0;
-      const rawFontSize =
-        computedStyles && computedStyles.fontSize
-          ? parseFloat(computedStyles.fontSize)
-          : 0;
-
-      // prefer computed line-height; fallback to average line height measured from scrollHeight
-      const averageLineHeight =
-        textarea.scrollHeight && totalLines > 0
-          ? textarea.scrollHeight / totalLines
-          : 0;
-      const lineHeight =
-        rawLineHeight > 0
-          ? rawLineHeight
-          : rawFontSize > 0
-            ? rawFontSize * 1.3
-            : averageLineHeight > 0
-              ? averageLineHeight
-              : 18;
-
-      const lineTopOffset = (targetLine - 1) * lineHeight;
-      const centerOffsetPx = Math.max(
-        0,
-        textarea.clientHeight / 2 - lineHeight / 2,
-      );
-      const maxScrollTop = Math.max(
-        0,
-        textarea.scrollHeight - textarea.clientHeight,
-      );
-      const desiredScrollTop = Math.min(
-        maxScrollTop,
-        Math.max(0, lineTopOffset - centerOffsetPx),
-      );
-      textarea.scrollTop = Number.isFinite(desiredScrollTop)
-        ? desiredScrollTop
-        : 0;
-
-      if (select) {
-        const lineIndex = targetLine - 1;
-        const beforeLine = lines
-          .slice(0, lineIndex)
-          .reduce((acc, current) => acc + current.length + 1, 0);
-        const currentLine = lines[lineIndex] ?? "";
-        if (typeof textarea.setSelectionRange === "function") {
-          try {
-            textarea.focus({ preventScroll: true });
-          } catch {
-            textarea.focus();
-          }
-          textarea.setSelectionRange(
-            beforeLine,
-            beforeLine + currentLine.length,
-          );
-        } else {
-          textarea.focus();
-          textarea.select();
+      const end = text.indexOf("\n", start);
+      requestAnimationFrame(() => {
+        if (!textarea.current) return;
+        if (select) {
+          element.focus({ preventScroll: true });
+          element.setSelectionRange(start, end < 0 ? text.length : end);
         }
-      }
+        element.scrollTop = Math.max(
+          0,
+          (current - 1) * 20 - element.clientHeight / 2 + 10,
+        );
+      });
     },
-    [],
-  );
+  }));
 
-  const customTextConverter = React.useMemo(
-    () =>
-      // eslint-disable-next-line react-hooks/refs
-      createCustomTextConverter({
-        onStart: startProgress,
-        onSuccess: completeProgress,
-        onFailure: failProgress,
-        onProgress: (message, progress) => {
-          // stop simulated progress and show real progress from worker
-          cancelTimers();
-          showStatus(message, progress);
-        },
-      }),
-    [startProgress, completeProgress, failProgress, cancelTimers, showStatus],
-  );
-
-  // https://react-dropzone.js.org/
-
-  const scrollLineNumber = scrollRequest?.line ?? null;
-  const scrollToken = scrollRequest?.token ?? 0;
-  const shouldSelectLine = scrollRequest?.select ?? true;
-  React.useEffect(() => {
-    if (typeof scrollLineNumber === "number") {
-      scrollToLine(scrollLineNumber, { select: shouldSelectLine });
+  async function readFile(file, sheetIndex = 0, chosenEncoding = encoding) {
+    cancel();
+    setError("");
+    if (!file) return;
+    // Retain failed imports so changing the encoding retries that file, not the
+    // previously displayed document. Edits and swaps clear this reference.
+    lastFile.current = file;
+    if (file.size > config.maxFileSize) {
+      setError("File exceeds the 10 MiB limit.");
+      return;
     }
-  }, [scrollToken, scrollLineNumber, shouldSelectLine, scrollToLine]);
+    const token = generation.current;
+    setBusy(true);
+    setStatus("Reading " + file.name + "…");
+    const job = startJob(
+      "parse",
+      { file, sheetIndex, encoding: chosenEncoding },
+      (message) => {
+        if (generation.current === token) setStatus(message);
+      },
+    );
+    active.current = job;
+    try {
+      const parsed = await job.promise;
+      if (generation.current !== token) return;
+      onUpdate({ ...parsed, file, name: file.name });
+      setStatus("Loaded " + file.name);
+    } catch (failure) {
+      if (generation.current === token && failure.name !== "AbortError")
+        setError(failure.message);
+    } finally {
+      if (generation.current === token) {
+        setBusy(false);
+        active.current = null;
+      }
+    }
+  }
 
   return (
-    <div className="textarea-wrapper">
-      <DropTextArea
-        onChange={(e) => {
-          const newValue = e.target.value;
-          setLocalValue(newValue);
-          debouncedOnUpdate(newValue);
-        }}
-        value={localValue}
-        component={TextArea}
-        textareaProps={{
-          className: classNames("textarea", { dragging: isDragging }),
-          rows: 25,
-          ref: textareaRef,
-        }}
-        onDropRead={(text) => {
-          setIsDragging(false);
-          if (typeof text === "string") {
-            onUpdate(text);
-            completeProgress();
-          } else {
-            failProgress("Could not read dropped file");
-          }
-        }}
-        onError={(msg) => {
-          setIsDragging(false);
-          const message = msg || "Unexpected error";
-          showError(`Error: ${message}`);
-          failProgress(message);
-        }}
-        customTextConverter={customTextConverter}
-        dropzoneProps={{
-          // Ref: https://react-dropzone.js.org/
-          // extremely large files may cause a crash
-          maxSize: config.maxFileSize,
-          onDragEnter: () => setIsDragging(true),
-          onDragLeave: () => setIsDragging(false),
+    <section
+      className={"editor panel" + (dragging ? " dragging" : "")}
+      aria-label={label + " editor"}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          setDragging(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        if (event.dataTransfer.files.length !== 1) {
+          cancel();
+          setError("Drop one file into each editor.");
+          return;
+        }
+        readFile(event.dataTransfer.files[0]);
+      }}
+    >
+      <div className="panel-heading">
+        <div className="editor-title">
+          <span className={"side-dot " + side} />
+          <label htmlFor={side + "-text"}>{label}</label>
+          <span className="filename" title={document.name}>
+            {document.name || "Untitled"}
+          </span>
+        </div>
+        <div className="button-group">
+          <button
+            type="button"
+            className="ghost"
+            aria-pressed={wrap}
+            onClick={() => setWrap(!wrap)}
+            title="Wrap long lines"
+          >
+            Wrap
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => picker.current.click()}
+          >
+            Open file
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            aria-label={"Clear " + label.toLowerCase()}
+            onClick={() => {
+              cancel();
+              setError("");
+              onUpdate({ text: "", name: "", file: null, sheets: [] });
+            }}
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+      <input
+        ref={picker}
+        type="file"
+        tabIndex={-1}
+        className="visually-hidden"
+        aria-label={"Open " + label.toLowerCase() + " file"}
+        onChange={(event) => {
+          readFile(event.target.files[0]);
+          event.target.value = "";
         }}
       />
-      {dropStatus.active && (
-        <div className="drop-progress" aria-live="polite">
-          <div className="drop-progress-header">
-            <span>{dropStatus.message}</span>
-            <span>{Math.round(dropStatus.progress)}%</span>
-          </div>
-          <div
-            className="drop-progress-bar"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-valuenow={Math.round(dropStatus.progress)}
-          >
-            <div
-              className="drop-progress-fill"
-              style={{ width: `${Math.min(100, dropStatus.progress)}%` }}
-            />
-          </div>
+      <textarea
+        ref={textarea}
+        id={side + "-text"}
+        value={document.text}
+        wrap={wrap ? "soft" : "off"}
+        spellCheck={false}
+        autoComplete="off"
+        autoCapitalize="off"
+        className="textarea"
+        placeholder={
+          "Paste " + label.toLowerCase() + " text or drop a file here…"
+        }
+        onChange={(event) => {
+          cancel();
+          const text = event.target.value;
+          if (text.length > config.maxFileSize) {
+            setError("Text exceeds the 10 MiB limit.");
+            return;
+          }
+          setError("");
+          onUpdate({
+            text,
+            name: document.name,
+            file: null,
+            sheets: [],
+            encoding: "edited",
+          });
+        }}
+      />
+      <div className="editor-meta">
+        <span className="mono">
+          {document.text.length.toLocaleString("en-AU")} chars
+        </span>
+        {document.sheets?.length > 0 ? (
+          <label className="inline-label">
+            Sheet{" "}
+            <select
+              aria-label={label + " worksheet"}
+              value={document.sheetIndex}
+              disabled={busy}
+              onChange={(event) =>
+                readFile(document.file, Number(event.target.value))
+              }
+            >
+              {document.sheets.map((name, index) => (
+                <option key={name} value={index}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label className="inline-label">
+            Encoding{" "}
+            <select
+              aria-label={label + " encoding"}
+              value={encoding}
+              onChange={(event) => {
+                setEncoding(event.target.value);
+                const file = lastFile.current || document.file;
+                if (file) readFile(file, 0, event.target.value);
+              }}
+            >
+              <option value="auto">Auto / UTF-8</option>
+              <option value="utf-8">UTF-8</option>
+              <option value="utf-16le">UTF-16 LE</option>
+              <option value="utf-16be">UTF-16 BE</option>
+              <option value="windows-1252">Windows-1252</option>
+            </select>
+          </label>
+        )}
+        {busy && (
+          <button className="ghost" onClick={cancel}>
+            Cancel import
+          </button>
+        )}
+      </div>
+      {status && (
+        <div className="editor-status" role="status">
+          {busy && <span className="spinner" />}
+          {status}
         </div>
       )}
-    </div>
+      {error && (
+        <div className="inline-error" role="alert">
+          {error}
+        </div>
+      )}
+    </section>
   );
-};
-
-TextInput.propTypes = {
-  onUpdate: PropTypes.func.isRequired,
-  value: PropTypes.string.isRequired,
-  scrollRequest: PropTypes.shape({
-    line: PropTypes.number,
-    token: PropTypes.number.isRequired,
-    select: PropTypes.bool,
-  }),
-};
-
-TextInput.defaultProps = {
-  scrollRequest: undefined,
-};
-
-export default TextInput;
+});
+export default React.memo(TextInput);

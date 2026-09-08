@@ -1,3 +1,4 @@
+// Short examples keep both panes readable and demonstrate several edit types.
 export const initialLeft = `Paste text here, or DRAG AND DROP a text or spreadsheet file here
 Each line is compared for differences with results shown below
 
@@ -23,4 +24,5 @@ Common line example 1
 Common line example 2
 Common line example 3
 
-Additional lines are marked green`;
+Additional lines are marked green
+`;

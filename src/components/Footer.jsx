@@ -2,8 +2,7 @@ import React from "react";
 
 const Footer = () => {
   // only show copyright notice when hosted on on gock.net
-  const hostname =
-    typeof window === "object" ? window.location.hostname : "";
+  const hostname = typeof window === "object" ? window.location.hostname : "";
 
   if (hostname === "gock.net") {
     return (

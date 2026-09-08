@@ -1,178 +1,224 @@
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import "./App.css";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import Diff from "./Diff";
 import Footer from "./Footer";
 import TextInput from "./TextInput";
 import DiffViewerOptions from "./DiffViewerOptions";
 import ErrorBoundary from "./ErrorBoundary";
+import useComparison from "../hooks/useComparison";
 import { initialLeft, initialRight } from "../library/inputs";
-import config from "../config";
-import PrettyBytes from "./PrettyBytes";
 
-const App = () => {
-  const [inputLeft, setInputLeft] = React.useState(initialLeft);
-  const [inputRight, setInputRight] = React.useState(initialRight);
-  const [options, setOptions] = React.useState({
-    splitView: false,
+const initialDocument = (text, revision) => ({
+  text,
+  revision,
+  name: "",
+  sheets: [],
+  file: null,
+});
+
+export default function App() {
+  const sequence = useRef(2);
+  const [documents, setDocuments] = useState({
+    left: initialDocument(initialLeft, 0),
+    right: initialDocument(initialRight, 1),
+  });
+  const [options, setOptions] = useState({
     compareMethod: "diffChars",
+    ignoreWhitespace: false,
+    ignoreLineEndings: false,
   });
-  const [scrollRequests, setScrollRequests] = React.useState({
-    left: { line: null, token: 0 },
-    right: { line: null, token: 0 },
-  });
-  const deferredLeft = React.useDeferredValue(inputLeft); // keep diff SPA responsive for large files
-  const deferredRight = React.useDeferredValue(inputRight);
-  const isDiffPending =
-    deferredLeft !== inputLeft || deferredRight !== inputRight;
-
-  const queueScroll = React.useCallback((updates) => {
-    if (!updates || Object.keys(updates).length === 0) {
-      return;
-    }
-    setScrollRequests((previous) => {
-      let didChange = false;
-      let next = { ...previous };
-      Object.entries(updates).forEach(([side, payload]) => {
-        if (side !== "left" && side !== "right") {
-          return;
-        }
-        const normalizedPayload =
-          payload && typeof payload === "object" ? payload : { line: payload };
-        const { line } = normalizedPayload;
-        if (line == null) {
-          return;
-        }
-        next = {
-          ...next,
-          [side]: {
-            ...normalizedPayload,
-            line,
-            token: previous[side].token + 1,
-          },
-        };
-        didChange = true;
-      });
-      return didChange ? next : previous;
-    });
-  }, []);
-
-  const handleLineNumberClick = React.useCallback(
-    (lineId) => {
-      // accept only explicit L- or R- prefixes (case-insensitive)
-      if (!lineId || typeof lineId !== "string") {
-        return;
-      }
-      const match = /^([LR])-(\d+)$/i.exec(lineId);
-      if (!match) {
-        return;
-      }
-      const [, prefix, lineText] = match;
-      const lineNumber = Number(lineText);
-      if (!Number.isInteger(lineNumber) || lineNumber <= 0) {
-        return;
-      }
-      const contextLine = Math.max(1, lineNumber - 2);
-
-      const up = prefix.toUpperCase();
-      const normalizedPrefix =
-        up === "L" ? "left" : up === "R" ? "right" : null;
-      if (!normalizedPrefix) {
-        return;
-      }
-      const primarySide = normalizedPrefix;
-      const secondarySide = primarySide === "left" ? "right" : "left";
-
-      queueScroll({
-        [primarySide]: { line: lineNumber, select: true },
-        [secondarySide]: { line: contextLine, select: false },
-      });
-    },
-    [queueScroll],
+  const [splitView, setSplitView] = useState(true);
+  const [manual, setManual] = useState(false);
+  const leftEditor = useRef(null);
+  const rightEditor = useRef(null);
+  const comparison = useComparison(
+    documents.left,
+    documents.right,
+    options,
+    manual,
   );
 
-  // stable updater that accepts either a patch object or an updater function
-  const updateOptions = React.useCallback((patchOrUpdater) => {
-    setOptions((prev) =>
-      typeof patchOrUpdater === "function"
-        ? patchOrUpdater(prev)
-        : { ...prev, ...patchOrUpdater },
+  // Editors commit immediately. Only comparison is debounced, so swaps always
+  // use what is visible and no old typing timer can replace a later import.
+  const updateDocument = useCallback((side, patch) => {
+    const revision = sequence.current++;
+    setDocuments((previous) => ({
+      ...previous,
+      [side]: { ...previous[side], ...patch, revision },
+    }));
+  }, []);
+  const updateLeft = useCallback(
+    (patch) => updateDocument("left", patch),
+    [updateDocument],
+  );
+  const updateRight = useCallback(
+    (patch) => updateDocument("right", patch),
+    [updateDocument],
+  );
+  const updateOptions = useCallback(
+    (patch) => setOptions((previous) => ({ ...previous, ...patch })),
+    [],
+  );
+  const navigate = useCallback((row, side) => {
+    leftEditor.current?.goToLine(
+      row.left?.number || row.leftAnchor || 1,
+      side === "left",
+    );
+    rightEditor.current?.goToLine(
+      row.right?.number || row.rightAnchor || 1,
+      side === "right",
     );
   }, []);
 
+  function swap() {
+    leftEditor.current?.cancel();
+    rightEditor.current?.cancel();
+    const leftRevision = sequence.current++;
+    const rightRevision = sequence.current++;
+    setDocuments((previous) => ({
+      left: { ...previous.right, revision: leftRevision },
+      right: { ...previous.left, revision: rightRevision },
+    }));
+  }
+  const working = comparison.status === "working";
   return (
-    <ErrorBoundary>
-      <div className={isDiffPending ? "app app-pending" : "app"}>
-        <ToastContainer />
-        <div className="grid-header">
-          <p className="heading">
-            diff-text - Compare two portions of text in the browser. Supports
-            text and{" "}
+    <main
+      className="app"
+      onKeyDown={(event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          comparison.compare();
+        }
+      }}
+    >
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            <img src="/diff.svg" alt="" />
+          </span>
+          <h1>
+            diff<span className="muted">text</span>
+          </h1>
+          <span className="header-divider" />
+          <span className="tagline">
+            {" "}
+            Compare two portions of text in the browser. Supports text and{" "}
             <a href="https://docs.sheetjs.com/docs/#supported-file-formats">
-              common spreadsheet files
+              common spreadsheet files{" "}
             </a>
             .
-          </p>
-          <div className="center">
+          </span>
+        </div>
+        <button onClick={swap} aria-label="Swap original and modified">
+          <span aria-hidden="true">⇄</span> Swap sides
+        </button>
+      </header>
+      <div className="editors">
+        <TextInput
+          ref={leftEditor}
+          side="left"
+          document={documents.left}
+          onUpdate={updateLeft}
+        />
+        <TextInput
+          ref={rightEditor}
+          side="right"
+          document={documents.right}
+          onUpdate={updateRight}
+        />
+      </div>
+      <div className="toolbar panel">
+        <DiffViewerOptions
+          options={options}
+          onChange={updateOptions}
+          splitView={splitView}
+          onViewChange={setSplitView}
+        />
+        <div className="toolbar-actions">
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={manual}
+              onChange={(event) => setManual(event.target.checked)}
+            />
+            Manual
+          </label>
+          {working ? (
+            <button onClick={comparison.cancel}>Cancel</button>
+          ) : (
             <button
-              onClick={() => {
-                // swap left and right contents
-                const [left, right] = [inputLeft, inputRight];
-                setInputLeft(right);
-                setInputRight(left);
-              }}
+              className="primary"
+              title="Compare (Ctrl/⌘ + Enter)"
+              onClick={comparison.compare}
             >
-              &harr;
+              Compare <span aria-hidden="true">↵</span>
             </button>
-          </div>
-          <div>
-            <DiffViewerOptions options={options} onChange={updateOptions} />
-          </div>
+          )}
         </div>
-
-        <div className="grid-inputs">
-          <TextInput
-            onUpdate={setInputLeft}
-            value={inputLeft}
-            scrollRequest={scrollRequests.left}
-          />
-          <TextInput
-            onUpdate={setInputRight}
-            value={inputRight}
-            scrollRequest={scrollRequests.right}
-          />
+      </div>
+      <div className="comparison-status" role="status">
+        {working ? (
+          <>
+            <span className="spinner" />
+            Comparing…
+          </>
+        ) : comparison.status === "cancelled" ? (
+          "Comparison cancelled. Select Compare to resume."
+        ) : comparison.error ? (
+          "Comparison failed. Adjust the input or select Compare to retry."
+        ) : comparison.stale ? (
+          comparison.large ? (
+            "Large-file mode · select Compare to update the result."
+          ) : manual ? (
+            "Edits ready · select Compare to update the result."
+          ) : (
+            "Text changed · preparing comparison…"
+          )
+        ) : (
+          "Comparison up to date"
+        )}
+        {comparison.stale && comparison.result && (
+          <span className="badge">Previous result</span>
+        )}
+      </div>
+      {comparison.error && (
+        <div className="inline-error" role="alert">
+          {comparison.error} Your text is still available above.
         </div>
-        <div className="output">
-          {isDiffPending && (
-            <div className="diff-pending" aria-live="polite">
-              Preparing diff...
+      )}
+      <section className="results panel" aria-label="Diff">
+        <ErrorBoundary key={comparison.signature}>
+          {comparison.result ? (
+            <Diff
+              key={comparison.signature}
+              result={comparison.result}
+              splitView={splitView}
+              stale={comparison.stale}
+              onNavigate={navigate}
+            />
+          ) : (
+            <div className="empty-result">
+              <span className="empty-symbol" aria-hidden="true">
+                ≠
+              </span>
+              <strong>Your comparison will appear here</strong>
+              <p>
+                {comparison.error || comparison.status === "cancelled"
+                  ? "Your editors are ready when you are."
+                  : comparison.large || manual
+                    ? "Select Compare when you are ready."
+                    : "Preparing your text…"}
+              </p>
             </div>
           )}
-          <Diff
-            left={deferredLeft}
-            right={deferredRight}
-            options={options}
-            onLineNumberClick={handleLineNumberClick}
-          />
-        </div>
-
-        {/* list config limits, maxLines and maxFileSize permitted */}
-        <div className="limits">
-          <p>
-            Limits: {config.maxLines.toLocaleString()} lines,{" "}
-            <PrettyBytes bytes={config.maxFileSize} /> file size and{" "}
-            {config.maxPermittedLineLength.toLocaleString()} characters per
-            line.
-          </p>
-        </div>
-
+        </ErrorBoundary>
+      </section>
+      <div className="app-footer">
+        <span>
+          10 MiB per input · 100,000 lines · 100,000 characters per line
+        </span>
         <Footer />
       </div>
-    </ErrorBoundary>
+    </main>
   );
-};
-
-// No external props expected for App — remove empty propTypes/defaultProps
-
-export default App;
+}

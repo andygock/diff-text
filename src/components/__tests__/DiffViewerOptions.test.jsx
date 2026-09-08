@@ -1,69 +1,47 @@
 import React from "react";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import DiffViewerOptions from "../DiffViewerOptions";
-
-afterEach(() => {
-  cleanup();
-});
-
+const options = {
+  compareMethod: "diffChars",
+  ignoreWhitespace: false,
+  ignoreLineEndings: false,
+};
 describe("DiffViewerOptions", () => {
-  it("renders full labels on large screens", () => {
-    window.innerWidth = 1600;
-    render(
-      <DiffViewerOptions
-        options={{ compareMethod: "diffChars", splitView: false }}
-        onChange={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("Characters")).toBeInTheDocument();
-    expect(screen.getByText("Unified")).toBeInTheDocument();
-    expect(screen.getByText("Split")).toBeInTheDocument();
-  });
-
-  it("renders short labels on small screens", () => {
-    window.innerWidth = 1200;
-    render(
-      <DiffViewerOptions
-        options={{ compareMethod: "diffChars", splitView: false }}
-        onChange={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("Ch")).toBeInTheDocument();
-    expect(screen.queryByText("Characters")).not.toBeInTheDocument();
-  });
-
-  it("changes compare method selection", () => {
-    window.innerWidth = 1600;
+  it("exposes labelled native controls and updates semantic options", () => {
     const onChange = vi.fn();
     render(
       <DiffViewerOptions
-        options={{ compareMethod: "diffChars", splitView: false }}
+        options={options}
         onChange={onChange}
+        splitView
+        onViewChange={vi.fn()}
       />,
     );
-
-    fireEvent.click(screen.getByLabelText("Words"));
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ compareMethod: "diffWords" }),
-    );
+    fireEvent.change(screen.getByLabelText("Comparison detail"), {
+      target: { value: "diffWords" },
+    });
+    expect(onChange).toHaveBeenCalledWith({ compareMethod: "diffWords" });
+    fireEvent.click(screen.getByLabelText("Ignore whitespace"));
+    expect(onChange).toHaveBeenCalledWith({ ignoreWhitespace: true });
+    fireEvent.click(screen.getByLabelText("Ignore line endings"));
+    expect(onChange).toHaveBeenCalledWith({ ignoreLineEndings: true });
   });
-
-  it("switches view type", () => {
-    window.innerWidth = 1600;
-    const onChange = vi.fn();
+  it("switches layout independently of comparison options", () => {
+    const onViewChange = vi.fn();
     render(
       <DiffViewerOptions
-        options={{ compareMethod: "diffChars", splitView: false }}
-        onChange={onChange}
+        options={options}
+        onChange={vi.fn()}
+        splitView
+        onViewChange={onViewChange}
       />,
     );
-
-    fireEvent.click(screen.getByLabelText("Split"));
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ splitView: true }),
+    expect(screen.getByRole("button", { name: "Split" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Unified" }));
+    expect(onViewChange).toHaveBeenCalledWith(false);
   });
 });

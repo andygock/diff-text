@@ -11,8 +11,9 @@ keyboard focus and a virtualised unified or split comparison view.
 
 ## Development
 
-Use pnpm exclusively. Keep the configured minimum release age in place when
-adding or updating packages.
+Use Node.js 20.19+ (20.x) or 22.12+, and pnpm 12.3.4 as pinned in
+`package.json`. Use pnpm exclusively. The repository enforces a seven-day
+minimum release age; keep it in place when adding or updating packages.
 
 ```sh
 pnpm install
@@ -22,6 +23,8 @@ pnpm dev
 ```sh
 pnpm lint
 pnpm test
+pnpm typecheck
+pnpm format:check
 pnpm build
 pnpm check:worker
 pnpm benchmark
@@ -32,7 +35,10 @@ pnpm benchmark
   Run the build first. This does not replace browser validation.
 - `pnpm benchmark` measures the source comparison and display-model generation
   without starting a listening server. Timings are diagnostic, not brittle test thresholds.
-- `pnpm format` formats source files.
+- `pnpm format` formats source, scripts and project configuration.
+- `pnpm format:check` checks formatting without writing files.
+- `pnpm typecheck` checks the JavaScript comparison, parsing, worker and diff-view
+  contracts using JSDoc and TypeScript without generating output.
 - `pnpm test:watch` runs tests during development.
 - `pnpm preview` serves the production build locally.
 
@@ -52,7 +58,8 @@ worker immediately; stale results remain clearly labelled.
 - Next/previous change navigation, expandable unchanged context, and source-line links.
 - Optional editor wrapping. Source-line navigation turns wrapping off for accurate positioning.
 - Automatic UTF-8/UTF-16 BOM detection and explicit UTF-8, UTF-16 or Windows-1252 decoding.
-- Spreadsheet worksheet selection; selected sheets are converted to CSV.
+- Spreadsheet worksheet selection; selected sheets are converted to CSV values.
+  Workbook structure, formatting and formula definitions are not compared.
 
 The line-ending badge on changed rows makes otherwise invisible changes visible.
 Very long output lines preview the first 2,000 characters and provide a link to
@@ -74,7 +81,9 @@ the full source line. Input text is retained in memory and is not persisted acro
   If the alignment budget is exceeded, it preserves matching edges and explicitly
   marks the unmatched middle as removed/added.
 - `displayRows.js` constructs context with a linear scan. The renderer mounts only
-  the visible rows plus overscan, including when unchanged lines are expanded.
+  the visible rows plus overscan inside a bounded scroll viewport, including when
+  unchanged lines are expanded. Wrapped rows are measured by the browser; unseen
+  rows use provisional heights until mounted.
 
 Limits are defined in `src/config.js`:
 
@@ -97,6 +106,9 @@ workbooks are rejected.
 Tests cover races, worker failures and cancellation, exact round-tripping,
 encoding, worksheet limits, virtualisation and source navigation. Browser smoke
 tests are run only when requested.
+
+SheetJS is pinned to the official 0.20.3 tarball, which includes fixes for
+CVE-2023-30533 and CVE-2024-22363. The registry release 0.18.5 is not used.
 
 ## References
 

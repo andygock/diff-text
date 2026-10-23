@@ -497,12 +497,15 @@ h2 {
   font-size: 11px;
 }
 .diff-viewport {
-  flex: 1 1 auto;
+  /* A finite viewport keeps virtualisation independent of canvas height. */
+  flex: 0 0 auto;
   min-height: 160px;
-  height: auto;
+  height: clamp(160px, 45dvh, 600px);
   overflow: auto;
   position: relative;
   scrollbar-gutter: stable;
+  /* Scroll anchoring is managed by the measured virtual row layout. */
+  overflow-anchor: none;
 }
 .diff-viewport.stale {
   opacity: 0.55;
@@ -585,8 +588,13 @@ h2 {
   padding: 0 4px;
   tab-size: 4;
 }
+.wrap-output .virtual-row {
+  height: auto;
+  min-height: var(--code-row);
+}
 .wrap-output .diff-cell {
-  height: 100%;
+  height: auto;
+  min-height: var(--code-row);
   align-items: flex-start;
 }
 .wrap-output .line-number {

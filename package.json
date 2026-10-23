@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{js,jsx,json,css,scss,md}\"",
+    "lint": "eslint src scripts vite.config.js eslint.config.mjs --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write src scripts README.md package.json vite.config.js eslint.config.mjs tsconfig.json pnpm-workspace.yaml",
     "test": "vitest run",
     "test:watch": "vitest",
     "check:worker": "node scripts/check-worker.mjs",
     "benchmark": "node scripts/benchmark.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format:check": "prettier --check src scripts README.md package.json vite.config.js eslint.config.mjs tsconfig.json pnpm-workspace.yaml",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -21,7 +23,7 @@
     "prop-types": "^15.8.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",
@@ -37,7 +39,12 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "jsdom": "^27.4.0",
     "prettier": "^3.9.6",
+    "typescript": "5.9.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.16"
+  },
+  "packageManager": "pnpm@12.3.4",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }

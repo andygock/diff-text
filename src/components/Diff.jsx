@@ -1,4 +1,12 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { lineBody, lineEnding } from "../library/text";
 import { makeDisplayRows } from "../library/displayRows";
 import config from "../config";
@@ -6,27 +14,24 @@ import config from "../config";
 // This must match --code-row in App.css so virtual scroll positions stay exact.
 const ROW_HEIGHT = 18;
 const PREVIEW_LIMIT = config.previewLimit;
-const CHARACTER_WIDTH = 6.6;
-const CELL_OVERHEAD = 50 + 18 + 8;
 const OVERSCAN = 8;
 
-function displayColumns(text) {
-  let columns = 0;
-  for (let index = 0; index < text.length; index++) {
-    const code = text.codePointAt(index);
-    if (code > 0xffff) index++;
-    columns += code === 9 ? 4 - (columns % 4) : code > 255 ? 2 : 1;
-  }
-  return columns;
-}
-
-function wrappedLineCount(cell, columns) {
-  if (!cell) return 1;
-  const body = lineBody(cell.text);
-  const preview = body.slice(0, PREVIEW_LIMIT);
-  // Leave room for the inline overflow affordance when a line is truncated.
-  const suffix = body.length > PREVIEW_LIMIT ? 32 : 0;
-  return Math.max(1, Math.ceil((displayColumns(preview) + suffix) / columns));
+// Measure only mounted rows. Browser layout includes badges, controls, word
+// wrapping and fallback fonts that character-count estimates cannot reproduce.
+/** @param {{as?: "div" | "button", position: number, onMeasure?: (position: number, height: number) => void} & React.HTMLAttributes<HTMLElement>} props */
+function VirtualRow({ as: Tag = "div", position, onMeasure, ...props }) {
+  const element = useRef(null);
+  useLayoutEffect(() => {
+    if (!onMeasure) return;
+    const measure = () =>
+      onMeasure(position, element.current.getBoundingClientRect().height);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element.current);
+    return () => observer.disconnect();
+  }, [position, onMeasure]);
+  return <Tag ref={element} {...props} />;
 }
 
 function findItemAt(offsets, scrollTop) {
@@ -102,13 +107,8 @@ function CodeCell({ cell, side, changed, onNavigate, disabled }) {
   );
 }
 
-const Diff = memo(function Diff({
-  result,
-  splitView,
-  wrapOutput,
-  stale,
-  onNavigate,
-}) {
+/** @param {import("../library/contracts").DiffProps} props */
+function Diff({ result, splitView, wrapOutput, stale, onNavigate }) {
   const viewport = useRef(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportSize, setViewportSize] = useState({ height: 432, width: 900 });
@@ -121,41 +121,66 @@ const Diff = memo(function Diff({
   );
   const contentWidth =
     Math.max(280, result.previewColumns * 6.6 + 250) * (splitView ? 2 : 1);
-  const wrapColumns = Math.max(
-    1,
-    Math.floor(
-      (viewportSize.width / (splitView ? 2 : 1) - CELL_OVERHEAD) /
-        CHARACTER_WIDTH,
-    ),
+  const measurementKey = useMemo(
+    () => ({ items, width: viewportSize.width, wrapOutput }),
+    [items, viewportSize.width, wrapOutput],
+  );
+  const [measurements, setMeasurements] = useState({
+    key: null,
+    heights: new Map(),
+  });
+  const measureRow = useCallback(
+    (position, measuredHeight) => {
+      const height = Math.max(ROW_HEIGHT, Math.ceil(measuredHeight));
+      setMeasurements((previous) => {
+        const heights =
+          previous.key === measurementKey ? previous.heights : new Map();
+        if (heights.get(position) === height) return previous;
+        return {
+          key: measurementKey,
+          heights: new Map(heights).set(position, height),
+        };
+      });
+    },
+    [measurementKey],
   );
   const layout = useMemo(() => {
     if (!wrapOutput)
       return {
         offsets: null,
-        rowHeights: null,
         totalHeight: items.length * ROW_HEIGHT,
       };
     const offsets = new Array(items.length);
-    const rowHeights = new Array(items.length);
+    const heights =
+      measurements.key === measurementKey ? measurements.heights : new Map();
     let top = 0;
-    items.forEach((item, index) => {
+    items.forEach((_, index) => {
       offsets[index] = top;
-      let height = ROW_HEIGHT;
-      if (!item.gap) {
-        const row = rows[item.index];
-        const cells = splitView
-          ? [row.left, row.right]
-          : [item.side === "left" ? row.left : row.right || row.left];
-        height =
-          Math.max(
-            ...cells.map((cell) => wrappedLineCount(cell, wrapColumns)),
-          ) * ROW_HEIGHT;
-      }
-      rowHeights[index] = height;
-      top += height;
+      top += heights.get(index) || ROW_HEIGHT;
     });
-    return { offsets, rowHeights, totalHeight: top };
-  }, [items, rows, splitView, wrapColumns, wrapOutput]);
+    return { offsets, totalHeight: top };
+  }, [items, measurementKey, measurements, wrapOutput]);
+
+  const previousLayout = useRef(null);
+  useLayoutEffect(() => {
+    const previous = previousLayout.current;
+    previousLayout.current = { key: measurementKey, offsets: layout.offsets };
+    if (
+      previous?.key !== measurementKey ||
+      !previous.offsets?.length ||
+      !layout.offsets?.length
+    )
+      return;
+    // Keep the visible source row anchored when newly mounted overscan rows
+    // above it grow, including after jumping to a distant change.
+    const element = viewport.current;
+    const index = findItemAt(previous.offsets, element.scrollTop);
+    const adjustment = layout.offsets[index] - previous.offsets[index];
+    if (adjustment) {
+      element.scrollTop += adjustment;
+      setScrollTop(element.scrollTop);
+    }
+  }, [layout.offsets, measurementKey]);
 
   useEffect(() => {
     if (typeof ResizeObserver === "undefined") return;
@@ -183,7 +208,10 @@ const Diff = memo(function Diff({
     } else {
       start = Math.max(
         0,
-        Math.min(items.length - 1, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN),
+        Math.min(
+          items.length - 1,
+          Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN,
+        ),
       );
       end = Math.min(
         items.length,
@@ -305,25 +333,29 @@ const Diff = memo(function Diff({
             const position = start + offset;
             if (item.gap)
               return (
-                <button
+                <VirtualRow
+                  as="button"
+                  position={position}
+                  onMeasure={wrapOutput ? measureRow : undefined}
                   className="context-gap virtual-row"
                   key={"gap-" + position}
                   style={{
                     top: layout.offsets
                       ? layout.offsets[position]
                       : position * ROW_HEIGHT,
-                    height: layout.rowHeights?.[position],
                   }}
                   onClick={() => changeLayoutContext(true)}
                 >
                   ··· {item.gap.toLocaleString("en-AU")} unchanged lines · click
                   to expand
-                </button>
+                </VirtualRow>
               );
             const row = result.rows[item.index];
             const navigate = (side) => onNavigate(row, side);
             return (
-              <div
+              <VirtualRow
+                position={position}
+                onMeasure={wrapOutput ? measureRow : undefined}
                 key={position}
                 className={
                   "virtual-row diff-row " +
@@ -336,7 +368,6 @@ const Diff = memo(function Diff({
                   top: layout.offsets
                     ? layout.offsets[position]
                     : position * ROW_HEIGHT,
-                  height: layout.rowHeights?.[position],
                 }}
               >
                 {splitView ? (
@@ -367,7 +398,7 @@ const Diff = memo(function Diff({
                     disabled={stale}
                   />
                 )}
-              </div>
+              </VirtualRow>
             );
           })}
         </div>
@@ -383,5 +414,5 @@ const Diff = memo(function Diff({
       </div>
     </>
   );
-});
-export default Diff;
+}
+export default memo(Diff);

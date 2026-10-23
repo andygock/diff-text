@@ -1,5 +1,10 @@
 // Virtualise both layouts, including expanded context. DOM size depends on the
 // viewport, not file size; all change positions refer back to the same row model.
+/**
+ * @param {import("./contracts").Row[]} rows
+ * @param {boolean} splitView
+ * @param {boolean} showAll
+ */
 export function makeDisplayRows(rows, splitView, showAll) {
   const visible = new Uint8Array(rows.length);
   if (showAll) visible.fill(1);

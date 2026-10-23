@@ -29,6 +29,23 @@ describe("comparison correctness", () => {
     expect(result.exact).toBe(false);
     expect(restore(result, "left")).toBe(" a  b\r\n");
   });
+  it.each([
+    ["a  b", "a b"],
+    ["a\tb old", "a b new"],
+    ["  old", " new"],
+  ])(
+    "preserves rendered whitespace in word detail for %j and %j",
+    (left, right) => {
+      const result = compareText(left, right, { compareMethod: "diffWords" });
+      for (const side of ["left", "right"]) {
+        const cell = result.rows[0][side];
+        const rendered = cell.parts
+          ? cell.parts.map((part) => part.text).join("")
+          : cell.text;
+        expect(rendered).toBe(side === "left" ? left : right);
+      }
+    },
+  );
   it("maps corresponding lines after an insertion", () => {
     const result = compareText("a\nb\nold", "insert\na\nb\nnew");
     expect(result.rows.at(-1).left.number).toBe(3);

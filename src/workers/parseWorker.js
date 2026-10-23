@@ -2,7 +2,9 @@
 import { compareText } from "../library/compare";
 import { parseFile } from "../library/parse";
 
-self.addEventListener("message", async ({ data }) => {
+self.addEventListener("message", async (event) => {
+  /** @type {import("../library/contracts").WorkerRequest} */
+  const data = event.data;
   const { id, type } = data;
   const progress = (message) =>
     self.postMessage({ id, type: "progress", message });

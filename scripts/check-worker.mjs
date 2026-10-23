@@ -70,6 +70,27 @@ const sheet = await run({
 });
 assert.equal(sheet.text, "second");
 assert.deepEqual(sheet.sheets, ["First", "Second"]);
+const legacyBook = XLSX.utils.book_new();
+XLSX.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));
+XLSX.utils.book_append_sheet(
+  legacyBook,
+  XLSX.utils.aoa_to_sheet([["name"], ["Привет"]]),
+  "Data",
+);
+const legacy = await run({
+  type: "parse",
+  file: new File(
+    [
+      XLSX.write(legacyBook, {
+        type: "array",
+        bookType: "dbf",
+        codepage: 1251,
+      }),
+    ],
+    "legacy.dbf",
+  ),
+});
+assert.ok(legacy.text.includes("Привет"));
 console.log(
-  "Production worker passed: exact EOF diff, UTF-16 import, lazy spreadsheet import and worksheet selection.",
+  "Production worker passed: exact EOF diff, UTF-16 import, lazy spreadsheet import, worksheet selection and legacy code pages.",
 );

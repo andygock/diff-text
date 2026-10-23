@@ -1,9 +1,10 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import Diff from "../Diff";
 import { compareText } from "../../library/compare";
 
+afterEach(() => vi.unstubAllGlobals());
 describe("Diff", () => {
   it("shows exact equality and preserves EOF changes", () => {
     render(
@@ -71,6 +72,82 @@ describe("Diff", () => {
     expect(
       screen.getByRole("region", { name: "Comparison results" }),
     ).toHaveClass("wrap-output");
+  });
+  it("updates virtual offsets using measured row heights", () => {
+    const observers = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback) {
+          this.callback = callback;
+          observers.push(this);
+        }
+        observe(element) {
+          this.element = element;
+        }
+        disconnect() {}
+      },
+    );
+    let height = 54;
+    vi.spyOn(
+      window.HTMLElement.prototype,
+      "getBoundingClientRect",
+    ).mockImplementation(function () {
+      return { height: this.classList.contains("diff-row") ? height : 18 };
+    });
+    const { container } = render(
+      <Diff
+        result={compareText("one\ntwo", "ONE\nTWO")}
+        splitView
+        wrapOutput
+        onNavigate={vi.fn()}
+      />,
+    );
+    const rows = container.querySelectorAll(".diff-row");
+    expect(rows[1].style.top).toBe("54px");
+    height = 90;
+    act(() =>
+      observers
+        .filter((observer) => observer.element?.classList.contains("diff-row"))
+        .forEach((observer) => observer.callback([])),
+    );
+    expect(rows[1].style.top).toBe("90px");
+    expect(rows[0].style.height).toBe("");
+  });
+  it("keeps a distant change anchored as wrapped overscan rows are measured", () => {
+    vi.spyOn(
+      window.HTMLElement.prototype,
+      "getBoundingClientRect",
+    ).mockImplementation(() => ({ height: 54 }));
+    const same = "unchanged\n".repeat(1000);
+    const { container } = render(
+      <Diff
+        result={compareText(same + "old", same + "new")}
+        splitView
+        wrapOutput
+        onNavigate={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Show unchanged"));
+    fireEvent.click(screen.getByRole("button", { name: "Next change" }));
+    const target = screen.getByRole("button", {
+      name: "Go to original line 1001",
+    });
+    expect(Number.parseFloat(target.closest(".diff-row").style.top)).toBe(
+      container.querySelector(".diff-viewport").scrollTop,
+    );
+  });
+  it("renders original whitespace faithfully in word mode", () => {
+    const { container } = render(
+      <Diff
+        result={compareText("a  b", "a b", { compareMethod: "diffWords" })}
+        splitView
+        onNavigate={vi.fn()}
+      />,
+    );
+    expect(container.querySelector(".diff-cell.left code").textContent).toBe(
+      "a  bNo newline",
+    );
   });
   it("navigates to changes beyond the virtualised viewport", () => {
     const same = Array.from({ length: 1000 }, (_, i) => i + "\n").join("");

@@ -9,6 +9,12 @@ import config from "../config";
 import { inspectText, splitLines, lineBody } from "./text";
 
 const methods = { diffChars, diffWords, diffWordsWithSpace, diffSentences };
+/**
+ * @param {string} left
+ * @param {string} right
+ * @param {import("./contracts").CompareOptions} options
+ * @returns {import("./contracts").ComparisonResult}
+ */
 export function compareText(left, right, options = {}) {
   const leftStats = inspectText(left);
   const rightStats = inspectText(right);
@@ -25,6 +31,7 @@ export function compareText(left, right, options = {}) {
   const oldKeys = oldLines.map(key);
   const newKeys = newLines.map(key);
   const started = performance.now();
+  /** @type {{count: number, added?: boolean, removed?: boolean}[] | undefined} */
   let changes = diffArrays(oldKeys, newKeys, {
     timeout: config.diffTimeout,
     maxEditLength: config.maxEditLength,
@@ -54,6 +61,7 @@ export function compareText(left, right, options = {}) {
       { count: tail },
     ].filter(({ count }) => count);
   }
+  /** @type {import("./contracts").Row[]} */
   const rows = [];
   const hunks = [];
   let oldIndex = 0;
@@ -65,6 +73,7 @@ export function compareText(left, right, options = {}) {
   const large = left.length + right.length > config.autoCompareSize;
   let detailLimited = large || coarse;
   let previewColumns = 0;
+  /** @returns {import("./contracts").Cell} */
   const cell = (lines, index) => {
     const text = lines[index];
     let columns = 0;
@@ -120,7 +129,19 @@ export function compareText(left, right, options = {}) {
         ) {
           inlineRemaining -= a.length + b.length;
           const parts = inlineMethod(a, b, { timeout: 15, maxEditLength: 300 });
-          if (parts) {
+          // Shared word tokens can normalise whitespace. Only render parts
+          // that reproduce both source bodies exactly; otherwise retain raw text.
+          if (
+            parts &&
+            parts
+              .filter((part) => !part.added)
+              .map((part) => part.value)
+              .join("") === a &&
+            parts
+              .filter((part) => !part.removed)
+              .map((part) => part.value)
+              .join("") === b
+          ) {
             row.left.parts = parts
               .filter((part) => !part.added)
               .map((part) => ({ text: part.value, changed: !!part.removed }));

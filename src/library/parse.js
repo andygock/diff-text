@@ -66,6 +66,13 @@ export function checkArchiveSize(buffer) {
   }
 }
 
+/**
+ * @param {File} file
+ * @param {string} encoding
+ * @param {number} sheetIndex
+ * @param {(message: string) => void} progress
+ * @returns {Promise<import("./contracts").ParsedFile>}
+ */
 export async function parseFile(
   file,
   encoding = "auto",
@@ -88,6 +95,9 @@ export async function parseFile(
   progress("Loading spreadsheet parser…");
   const mod = await import("xlsx");
   const XLSX = mod.default || mod;
+  // The modern ESM build requires explicit code pages for legacy workbooks.
+  // Keep this support lazy alongside the spreadsheet parser.
+  XLSX.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));
   // Read names first, then only the selected worksheet. Never silently truncate.
   const metadata = XLSX.read(buffer, { type: "array", bookSheets: true });
   const sheets = metadata.SheetNames || [];

@@ -39,6 +39,22 @@ describe("file parsing", () => {
     expect(result.sheets).toEqual(["First", "Second"]);
     expect(result.sheetIndex).toBe(1);
   });
+  it("preserves non-ASCII text in legacy DBF code pages", async () => {
+    XLSX.set_cptable(await import("xlsx/dist/cpexcel.full.mjs"));
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      book,
+      XLSX.utils.aoa_to_sheet([["name"], ["Привет"]]),
+      "Data",
+    );
+    const buffer = XLSX.write(book, {
+      type: "array",
+      bookType: "dbf",
+      codepage: 1251,
+    });
+    const result = await parseFile(file("legacy.dbf", buffer));
+    expect(result.text).toContain("Привет");
+  });
   it("rejects invalid sheet indexes and bounded cell ranges", async () => {
     const input = file("input.xlsx", workbook());
     await expect(parseFile(input, "auto", 2)).rejects.toThrow("does not exist");

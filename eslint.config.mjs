@@ -4,6 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 
 export default [
+  { ignores: ["**/*.d.ts"] },
   js.configs.recommended,
   {
     files: ["src/**/*.{js,jsx}"],
@@ -44,7 +45,6 @@ export default [
       ],
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
-      "no-bitwise": "off", // for the bitwise operation in isSpreadsheetFile
       "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
     settings: {
@@ -54,47 +54,16 @@ export default [
     },
   },
   {
-    files: ["src/**/*.test.{js,jsx}"],
+    files: ["scripts/**/*.mjs", "vite.config.js", "eslint.config.mjs"],
     languageOptions: {
-      ecmaVersion: 2020,
-      sourceType: "module",
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
+      ecmaVersion: "latest",
       globals: {
-        window: "readonly",
-        document: "readonly",
+        console: "readonly",
         performance: "readonly",
-        TextDecoder: "readonly",
-        TextEncoder: "readonly",
-        vi: "readonly",
-        describe: "readonly",
-        it: "readonly",
-        expect: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-      },
-    },
-    plugins: {
-      react,
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
-    rules: {
-      ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
-    },
-    settings: {
-      react: {
-        version: "detect",
+        File: "readonly",
+        URL: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
       },
     },
   },

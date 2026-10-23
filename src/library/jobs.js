@@ -3,6 +3,13 @@ import config from "../config";
 let sequence = 0;
 // Each job owns a worker. Termination interrupts synchronous algorithms;
 // a queued cancel message cannot interrupt JavaScript already executing.
+/**
+ * @template {keyof import("./contracts").JobPayloads} T
+ * @param {T} type
+ * @param {import("./contracts").JobPayloads[T]} payload
+ * @param {(message: string) => void} onProgress
+ * @param {() => Worker} factory
+ */
 export function startJob(
   type,
   payload,
@@ -21,6 +28,7 @@ export function startJob(
     clearTimeout(timer);
     worker?.terminate();
   };
+  /** @type {Promise<import("./contracts").JobResults[T]>} */
   const promise = new Promise((resolve, reject) => {
     rejectJob = reject;
     const finish = (error, result) => {
